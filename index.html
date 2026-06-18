@@ -27,6 +27,44 @@
   <main class="layout">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar__section">
+        <h2>Map</h2>
+        <label class="sidebar__select-label">
+          Select map
+          <select id="map-select" class="sidebar__select"></select>
+        </label>
+      </div>
+
+      <div class="sidebar__section">
+        <h2>Toggle elements</h2>
+        <div class="toggle-list">
+          <label class="toggle-row">
+            <input type="checkbox" id="toggle-grid" />
+            <span>Grid visible</span>
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" id="toggle-strongpoints" checked />
+            <span>Strongpoints visible</span>
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" id="toggle-garrisons" checked />
+            <span>Offensive garrisons</span>
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" id="toggle-garrison-radius" checked />
+            <span>Garrison radius (200m)</span>
+          </label>
+        </div>
+        <label class="sidebar__select-label sidebar__select-label--compact">
+          Garrison side
+          <select id="garrison-side" class="sidebar__select">
+            <option value="both">Both sides</option>
+            <option value="a">Side A</option>
+            <option value="b">Side B</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="sidebar__section">
         <h2>Tricks on this map</h2>
         <p class="sidebar__hint" id="pin-count">Loading pins…</p>
         <ul class="pin-list" id="pin-list"></ul>
@@ -72,8 +110,8 @@
           <img
             id="map-image"
             class="map-image"
-            src="maps/SMDM.webp"
-            alt="Saint Marie du Mont map"
+            src="maps/no-grid/SMDMV2_NoGrid.webp"
+            alt="Hell Let Loose tactical map"
             draggable="false"
           />
           <div class="map-pins" id="map-pins"></div>

@@ -128,6 +128,52 @@ body {
   line-height: 1.4;
 }
 
+.sidebar__select-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.sidebar__select-label--compact {
+  margin-top: 0.75rem;
+}
+
+.sidebar__select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #121612;
+  color: var(--text);
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+}
+
+.sidebar__select:focus {
+  outline: 2px solid var(--accent-dim);
+  outline-offset: 1px;
+}
+
+.toggle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.82rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.toggle-row input {
+  accent-color: var(--accent);
+}
+
 .pin-list {
   list-style: none;
   margin: 0;
@@ -338,6 +384,69 @@ body {
   max-width: none;
   user-select: none;
   -webkit-user-drag: none;
+}
+
+.map-overlays {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.map-grid-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0.55;
+}
+
+.overlay-strongpoint {
+  position: absolute;
+  border: 2px solid rgba(196, 163, 90, 0.85);
+  background: rgba(196, 163, 90, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  border-radius: 2px;
+}
+
+.overlay-garrison {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+.overlay-garrison__icon {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.65);
+}
+
+.overlay-garrison--a .overlay-garrison__icon {
+  background: #4a7ec4;
+}
+
+.overlay-garrison--b .overlay-garrison__icon {
+  background: #c44a4a;
+}
+
+.overlay-garrison-radius {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px solid;
+  opacity: 0.55;
+  z-index: 1;
+}
+
+.overlay-garrison-radius--a {
+  border-color: rgba(74, 126, 196, 0.9);
+  background: rgba(74, 126, 196, 0.08);
+}
+
+.overlay-garrison-radius--b {
+  border-color: rgba(196, 74, 74, 0.9);
+  background: rgba(196, 74, 74, 0.08);
 }
 
 .map-pins {

@@ -1,4 +1,5 @@
 import { MapViewer } from "./map-viewer.js";
+import { MapOverlays } from "./map-overlays.js";
 import {
   createVideoElement,
   isDirectVideo,
@@ -6,7 +7,9 @@ import {
   youtubeThumbnail,
 } from "./video-utils.js";
 
-const STORAGE_KEY = "hll-climb-pins";
+const STORAGE_KEY_PREFIX = "hll-climb-pins";
+const MAP_STORAGE_KEY = "hll-climb-selected-map";
+const TOGGLE_STORAGE_KEY = "hll-climb-overlay-toggles";
 
 const els = {
   viewport: document.getElementById("map-viewport"),
@@ -29,62 +32,142 @@ const els = {
   pinCoords: document.getElementById("pin-coords"),
   crosshair: document.getElementById("map-crosshair"),
   btnSavePin: document.getElementById("btn-save-pin"),
+  mapSelect: document.getElementById("map-select"),
+  garrisonSide: document.getElementById("garrison-side"),
 };
 
 let mapViewer;
+let mapOverlays;
 let pins = [];
-let mapName = "Map";
+let pinCatalog = {};
+let mapCatalog = [];
+let currentMapId = "SMDMV2";
+let currentMap = null;
 let editMode = false;
 let pendingCoords = null;
 let highlightedPinId = null;
 let previewHideTimer = null;
 
 async function init() {
-  const config = await loadConfig();
-  mapName = config.mapName || "Map";
-  els.image.src = config.mapImage || "maps/SMDM.webp";
-  document.title = `HLL Climb Guide — ${mapName}`;
+  const [spawnData, pinData] = await Promise.all([loadSpawnData(), loadPinData()]);
+  mapCatalog = spawnData.maps || [];
+  pinCatalog = pinData.pins || {};
+  currentMapId = loadSelectedMapId(pinData.defaultMapId);
 
-  await waitForImage(els.image);
-
-  mapViewer = new MapViewer(els.viewport, els.stage, els.image);
-  mapViewer.onTransform = () => {
-    updateZoomLabel();
-    positionPins();
-  };
-
-  pins = mergePins(config.pins || [], loadUserPins());
-  renderPins();
-  renderPinList();
+  populateMapSelect();
   bindUi();
-  mapViewer.fitToView();
+  await switchMap(currentMapId, { fit: true });
 }
 
-async function loadConfig() {
+async function loadSpawnData() {
+  try {
+    const response = await fetch("data/map-spawns.json");
+    if (!response.ok) throw new Error("Failed to load map spawn data");
+    return response.json();
+  } catch (error) {
+    console.warn(error);
+    return { maps: [] };
+  }
+}
+
+async function loadPinData() {
   try {
     const response = await fetch("data/pins.json");
     if (!response.ok) throw new Error("Failed to load pin data");
     return response.json();
   } catch (error) {
     console.warn(error);
-    return {
-      mapImage: "maps/SMDM.webp",
-      mapName: "Saint Marie du Mont",
-      pins: [],
-    };
+    return { defaultMapId: "SMDMV2", pins: {} };
   }
 }
 
-function loadUserPins() {
+function loadSelectedMapId(fallbackId) {
+  const stored = localStorage.getItem(MAP_STORAGE_KEY);
+  return stored || fallbackId || "SMDMV2";
+}
+
+function saveSelectedMapId(mapId) {
+  localStorage.setItem(MAP_STORAGE_KEY, mapId);
+}
+
+function loadToggleState() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    return JSON.parse(localStorage.getItem(TOGGLE_STORAGE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveToggleState(state) {
+  localStorage.setItem(TOGGLE_STORAGE_KEY, JSON.stringify(state));
+}
+
+function populateMapSelect() {
+  els.mapSelect.innerHTML = "";
+  for (const map of mapCatalog) {
+    const option = document.createElement("option");
+    option.value = map.id;
+    option.textContent = map.name;
+    els.mapSelect.appendChild(option);
+  }
+  els.mapSelect.value = currentMapId;
+}
+
+async function switchMap(mapId, { fit = false } = {}) {
+  const map = mapCatalog.find((item) => item.id === mapId);
+  if (!map) return;
+
+  currentMapId = mapId;
+  currentMap = map;
+  saveSelectedMapId(mapId);
+  els.mapSelect.value = mapId;
+
+  els.image.src = map.image;
+  els.image.alt = `${map.name} tactical map`;
+  document.title = `HLL Climb Guide — ${map.name}`;
+
+  await waitForImage(els.image);
+
+  if (!mapViewer) {
+    mapViewer = new MapViewer(els.viewport, els.stage, els.image);
+    mapViewer.onTransform = () => {
+      updateZoomLabel();
+      positionPins();
+    };
+    mapOverlays = new MapOverlays(els.stage, els.image);
+    applyToggleStateToUi();
+    applyToggleStateToOverlays();
+  } else {
+    mapOverlays.syncGridSize();
+  }
+
+  mapOverlays.setMapData(map);
+  pins = mergePins(pinCatalog[mapId] || [], loadUserPins(mapId));
+  renderPins();
+  renderPinList();
+
+  if (fit) {
+    mapViewer.fitToView();
+  } else {
+    mapViewer.clampTranslation();
+    mapViewer.applyTransform();
+  }
+}
+
+function storageKeyForMap(mapId) {
+  return `${STORAGE_KEY_PREFIX}-${mapId}`;
+}
+
+function loadUserPins(mapId) {
+  try {
+    return JSON.parse(localStorage.getItem(storageKeyForMap(mapId)) || "[]");
   } catch {
     return [];
   }
 }
 
-function saveUserPins(userPins) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(userPins));
+function saveUserPins(mapId, userPins) {
+  localStorage.setItem(storageKeyForMap(mapId), JSON.stringify(userPins));
 }
 
 function mergePins(basePins, userPins) {
@@ -114,6 +197,60 @@ function bindUi() {
 
   els.viewport.addEventListener("click", onViewportClick);
   els.viewport.addEventListener("mousemove", onCrosshairMove);
+
+  els.mapSelect.addEventListener("change", (event) => {
+    switchMap(event.target.value, { fit: true });
+  });
+
+  document.getElementById("toggle-grid").addEventListener("change", (event) => {
+    mapOverlays?.setToggle("grid", event.target.checked);
+    persistToggles();
+  });
+  document.getElementById("toggle-strongpoints").addEventListener("change", (event) => {
+    mapOverlays?.setToggle("strongpoints", event.target.checked);
+    persistToggles();
+  });
+  document.getElementById("toggle-garrisons").addEventListener("change", (event) => {
+    mapOverlays?.setToggle("offensiveGarrisons", event.target.checked);
+    persistToggles();
+  });
+  document.getElementById("toggle-garrison-radius").addEventListener("change", (event) => {
+    mapOverlays?.setToggle("garrisonRadius", event.target.checked);
+    persistToggles();
+  });
+  els.garrisonSide.addEventListener("change", (event) => {
+    mapOverlays?.setGarrisonSide(event.target.value);
+    persistToggles();
+  });
+}
+
+function applyToggleStateToUi() {
+  const saved = loadToggleState();
+  document.getElementById("toggle-grid").checked = saved.grid ?? false;
+  document.getElementById("toggle-strongpoints").checked = saved.strongpoints ?? true;
+  document.getElementById("toggle-garrisons").checked = saved.offensiveGarrisons ?? true;
+  document.getElementById("toggle-garrison-radius").checked = saved.garrisonRadius ?? true;
+  els.garrisonSide.value = saved.garrisonSide ?? "both";
+}
+
+function applyToggleStateToOverlays() {
+  if (!mapOverlays) return;
+  const saved = loadToggleState();
+  mapOverlays.setToggle("grid", saved.grid ?? false);
+  mapOverlays.setToggle("strongpoints", saved.strongpoints ?? true);
+  mapOverlays.setToggle("offensiveGarrisons", saved.offensiveGarrisons ?? true);
+  mapOverlays.setToggle("garrisonRadius", saved.garrisonRadius ?? true);
+  mapOverlays.setGarrisonSide(saved.garrisonSide ?? "both");
+}
+
+function persistToggles() {
+  saveToggleState({
+    grid: document.getElementById("toggle-grid").checked,
+    strongpoints: document.getElementById("toggle-strongpoints").checked,
+    offensiveGarrisons: document.getElementById("toggle-garrisons").checked,
+    garrisonRadius: document.getElementById("toggle-garrison-radius").checked,
+    garrisonSide: els.garrisonSide.value,
+  });
 }
 
 function renderPins() {
@@ -137,6 +274,7 @@ function renderPins() {
     els.pinsLayer.appendChild(button);
   }
 
+  const mapName = currentMap?.name || "this map";
   els.pinCount.textContent = `${pins.length} trick${pins.length === 1 ? "" : "s"} on ${mapName}`;
   positionPins();
 }
@@ -147,10 +285,8 @@ function positionPins() {
     const pin = pins.find((item) => item.id === button.dataset.id);
     if (!pin) return;
 
-    const left = `${pin.x}%`;
-    const top = `${pin.y}%`;
-    button.style.left = left;
-    button.style.top = top;
+    button.style.left = `${pin.x}%`;
+    button.style.top = `${pin.y}%`;
     button.classList.toggle("is-highlighted", pin.id === highlightedPinId);
   });
 }
@@ -339,6 +475,7 @@ function onSavePin(event) {
 
   const pin = {
     id: `user-${Date.now()}`,
+    mapId: currentMapId,
     title: document.getElementById("pin-title").value.trim(),
     description: document.getElementById("pin-description").value.trim(),
     videoUrl: document.getElementById("pin-video").value.trim(),
@@ -348,9 +485,9 @@ function onSavePin(event) {
     userAdded: true,
   };
 
-  const userPins = loadUserPins();
+  const userPins = loadUserPins(currentMapId);
   userPins.push(pin);
-  saveUserPins(userPins);
+  saveUserPins(currentMapId, userPins);
 
   pins.push(pin);
   renderPins();

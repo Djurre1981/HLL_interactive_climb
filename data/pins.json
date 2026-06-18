@@ -1,30 +1,31 @@
 {
-  "mapImage": "maps/SMDM.webp",
-  "mapName": "Saint Marie du Mont",
-  "pins": [
-    {
-      "id": "smdm-bush-1",
-      "title": "Bush climb — orchard edge",
-      "description": "Use the hedge line to vault into the orchard without exposing yourself on the road.",
-      "x": 38.5,
-      "y": 52.0,
-      "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-    },
-    {
-      "id": "smdm-roof-1",
-      "title": "Roof access — farmhouse",
-      "description": "Climb the rubble pile on the south side to get onto the farmhouse roof for overwatch.",
-      "x": 61.2,
-      "y": 44.8,
-      "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-    },
-    {
-      "id": "smdm-wall-1",
-      "title": "Wall boost — church approach",
-      "description": "Two-player boost or solo jump spot to clear the stone wall near the church.",
-      "x": 48.0,
-      "y": 35.5,
-      "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-    }
-  ]
+  "defaultMapId": "SMDMV2",
+  "pins": {
+    "SMDMV2": [
+      {
+        "id": "smdm-bush-1",
+        "title": "Bush climb — orchard edge",
+        "description": "Use the hedge line to vault into the orchard without exposing yourself on the road.",
+        "x": 38.5,
+        "y": 52.0,
+        "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      },
+      {
+        "id": "smdm-roof-1",
+        "title": "Roof access — farmhouse",
+        "description": "Climb the rubble pile on the south side to get onto the farmhouse roof for overwatch.",
+        "x": 61.2,
+        "y": 44.8,
+        "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      },
+      {
+        "id": "smdm-wall-1",
+        "title": "Wall boost — church approach",
+        "description": "Two-player boost or solo jump spot to clear the stone wall near the church.",
+        "x": 48.0,
+        "y": 35.5,
+        "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      }
+    ]
+  }
 }
