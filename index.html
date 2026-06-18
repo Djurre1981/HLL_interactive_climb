@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hell Let Loose — Interactive Climb Guide</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <header class="header">
+    <div class="header__brand">
+      <span class="header__tag">HLL</span>
+      <div>
+        <h1>Interactive Climb Guide</h1>
+        <p class="header__subtitle">Hover pins for a preview · Click to watch the full trick</p>
+      </div>
+    </div>
+    <div class="header__actions">
+      <button id="btn-reset-view" class="btn btn--ghost" type="button" title="Reset zoom and pan">Reset view</button>
+      <button id="btn-toggle-edit" class="btn btn--primary" type="button">Add pin</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__section">
+        <h2>Tricks on this map</h2>
+        <p class="sidebar__hint" id="pin-count">Loading pins…</p>
+        <ul class="pin-list" id="pin-list"></ul>
+      </div>
+      <div class="sidebar__section sidebar__section--edit hidden" id="edit-panel">
+        <h2>New pin</h2>
+        <p class="sidebar__hint">Click anywhere on the map to place a pin, then fill in the details.</p>
+        <form id="pin-form" class="pin-form">
+          <label>
+            Title
+            <input type="text" id="pin-title" required placeholder="e.g. Bush climb — South Farm" />
+          </label>
+          <label>
+            Description
+            <textarea id="pin-description" rows="3" placeholder="Short note about the trick"></textarea>
+          </label>
+          <label>
+            Video URL
+            <input type="url" id="pin-video" required placeholder="YouTube embed or .mp4 path" />
+          </label>
+          <label>
+            Preview thumbnail (optional)
+            <input type="url" id="pin-thumbnail" placeholder="Image URL for hover preview" />
+          </label>
+          <div class="pin-form__coords" id="pin-coords">No position selected</div>
+          <div class="pin-form__actions">
+            <button type="submit" class="btn btn--primary" disabled id="btn-save-pin">Save pin</button>
+            <button type="button" class="btn btn--ghost" id="btn-cancel-pin">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </aside>
+
+    <section class="map-shell">
+      <div class="map-toolbar">
+        <button id="btn-zoom-in" class="btn btn--icon" type="button" title="Zoom in">+</button>
+        <button id="btn-zoom-out" class="btn btn--icon" type="button" title="Zoom out">−</button>
+        <span class="map-toolbar__zoom" id="zoom-label">100%</span>
+      </div>
+
+      <div class="map-viewport" id="map-viewport">
+        <div class="map-stage" id="map-stage">
+          <img
+            id="map-image"
+            class="map-image"
+            src="maps/SMDM.webp"
+            alt="Saint Marie du Mont map"
+            draggable="false"
+          />
+          <div class="map-pins" id="map-pins"></div>
+        </div>
+        <div class="map-crosshair hidden" id="map-crosshair" aria-hidden="true"></div>
+      </div>
+
+      <div class="preview-tooltip hidden" id="preview-tooltip" role="tooltip">
+        <div class="preview-tooltip__media" id="preview-media"></div>
+        <div class="preview-tooltip__body">
+          <strong id="preview-title"></strong>
+          <p id="preview-description"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog class="video-modal" id="video-modal">
+    <div class="video-modal__inner">
+      <button class="video-modal__close" id="btn-close-modal" type="button" aria-label="Close">&times;</button>
+      <div class="video-modal__header">
+        <h2 id="modal-title"></h2>
+        <p id="modal-description"></p>
+      </div>
+      <div class="video-modal__player" id="modal-player"></div>
+    </div>
+  </dialog>
+
+  <script src="js/app.js" type="module"></script>
+</body>
+</html>
