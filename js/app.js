@@ -1,6 +1,7 @@
 import { MapViewer } from "./map-viewer.js";
 import { MapOverlays } from "./map-overlays.js";
 import { initAuth, loadProtectedPins } from "./auth.js";
+import { resolveMedalClip } from "./medal.js";
 import {
   DEFAULT_PIN_TAG,
   getPinTag,
@@ -12,7 +13,6 @@ import {
   isDirectVideo,
   isMedalUrl,
   isYoutubeUrl,
-  toEmbedUrl,
   youtubeThumbnail,
 } from "./video-utils.js";
 
@@ -73,7 +73,7 @@ const PIN_HOVER_RADIUS_PX = 140;
 
 const VIDEO_SOURCE_PLACEHOLDERS = {
   youtube: "https://www.youtube.com/watch?v=...",
-  medal: "https://medal.tv/clip/... or https://medal.tv/clips/...",
+  medal: "https://medal.tv/clips/... (use Share → Copy link)",
   other: "Direct .mp4 URL or other embeddable link",
 };
 
@@ -550,33 +550,60 @@ function focusPin(pin) {
   highlightPin(pin.id);
 }
 
+async function getPinPlayback(pin) {
+  let playbackUrl = pin.videoUrl;
+  let thumbnail = pin.thumbnail || youtubeThumbnail(pin.videoUrl);
+
+  if (isMedalUrl(pin.videoUrl)) {
+    const medal = await resolveMedalClip(pin.videoUrl);
+    playbackUrl = medal.contentUrl;
+    thumbnail = thumbnail || medal.thumbnailUrl;
+  }
+
+  return { playbackUrl, thumbnail };
+}
+
 function showPreview(pin, event) {
   clearTimeout(previewHideTimer);
   els.previewTitle.textContent = pin.title;
   els.previewDescription.textContent = pin.description || "";
-  els.previewMedia.innerHTML = "";
-
-  const thumbnail = pin.thumbnail || youtubeThumbnail(pin.videoUrl);
-  if (thumbnail) {
-    const img = document.createElement("img");
-    img.src = thumbnail;
-    img.alt = `${pin.title} preview`;
-    els.previewMedia.appendChild(img);
-  } else if (isDirectVideo(pin.videoUrl)) {
-    const video = createVideoElement(pin.videoUrl, {
-      autoplay: true,
-      muted: true,
-      controls: false,
-    });
-    video.loop = true;
-    els.previewMedia.appendChild(video);
-  } else {
-    const iframe = createVideoElement(pin.videoUrl, { autoplay: true, muted: true });
-    els.previewMedia.appendChild(iframe);
-  }
-
+  els.previewMedia.innerHTML = '<p class="preview-loading">Loading clip…</p>';
   els.previewTooltip.classList.remove("hidden");
   movePreview(event);
+
+  const previewPinId = pin.id;
+  loadPreviewMedia(pin, previewPinId);
+}
+
+async function loadPreviewMedia(pin, previewPinId) {
+  try {
+    const { playbackUrl, thumbnail } = await getPinPlayback(pin);
+    if (highlightedPinId !== previewPinId) return;
+
+    els.previewMedia.innerHTML = "";
+    if (thumbnail) {
+      const img = document.createElement("img");
+      img.src = thumbnail;
+      img.alt = `${pin.title} preview`;
+      els.previewMedia.appendChild(img);
+    } else if (isDirectVideo(playbackUrl)) {
+      const video = createVideoElement(playbackUrl, {
+        autoplay: true,
+        muted: true,
+        controls: false,
+      });
+      video.loop = true;
+      els.previewMedia.appendChild(video);
+    } else {
+      const iframe = createVideoElement(playbackUrl, { autoplay: true, muted: true });
+      els.previewMedia.appendChild(iframe);
+    }
+  } catch (error) {
+    console.warn(error);
+    if (highlightedPinId !== previewPinId) return;
+    els.previewMedia.innerHTML =
+      '<p class="preview-error">Could not load Medal.tv clip. Open the link on medal.tv instead.</p>';
+  }
 }
 
 function movePreview(event) {
@@ -612,11 +639,31 @@ function openModal(pin) {
   modalPin = pin;
   els.modalTitle.textContent = pin.title;
   els.modalDescription.textContent = pin.description || "";
-  els.modalPlayer.innerHTML = "";
-
-  const player = createVideoElement(pin.videoUrl, { autoplay: true, muted: false, controls: true });
-  els.modalPlayer.appendChild(player);
+  els.modalPlayer.innerHTML = '<p class="preview-loading">Loading clip…</p>';
   els.modal.showModal();
+  loadModalPlayer(pin);
+}
+
+async function loadModalPlayer(pin) {
+  try {
+    const { playbackUrl } = await getPinPlayback(pin);
+    if (modalPin?.id !== pin.id) return;
+
+    els.modalPlayer.innerHTML = "";
+    const player = createVideoElement(playbackUrl, {
+      autoplay: true,
+      muted: false,
+      controls: true,
+    });
+    els.modalPlayer.appendChild(player);
+  } catch (error) {
+    console.warn(error);
+    if (modalPin?.id !== pin.id) return;
+    els.modalPlayer.innerHTML = `
+      <p class="preview-error">Could not load Medal.tv clip.</p>
+      <p><a href="${escapeHtml(pin.videoUrl)}" target="_blank" rel="noopener noreferrer">Open on Medal.tv</a></p>
+    `;
+  }
 }
 
 function closeModal() {
@@ -782,7 +829,7 @@ function onSavePin(event) {
   const videoUrl = els.pinVideo.value.trim();
   const videoSource = getPinFormVideoSource();
   if (videoSource === "medal" && !isMedalUrl(videoUrl)) {
-    els.pinVideo.setCustomValidity("Enter a Medal.tv clip URL (medal.tv/clip/... or medal.tv/clips/...)");
+    els.pinVideo.setCustomValidity("Paste a Medal.tv share link (medal.tv/clips/...)");
     els.pinVideo.reportValidity();
     return;
   }

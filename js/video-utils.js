@@ -30,38 +30,6 @@ export function isYoutubeUrl(url) {
   return hostname.includes("youtube.com") || hostname === "youtu.be";
 }
 
-function toMedalEmbedUrl(url, { autoplay = false, mute = false } = {}) {
-  const parsed = parseMediaUrl(url);
-  if (!parsed) return url;
-
-  const parts = parsed.pathname.split("/").filter(Boolean);
-
-  const clipIdx = parts.indexOf("clip");
-  if (clipIdx >= 0 && parts[clipIdx + 1]) {
-    const id = parts[clipIdx + 1];
-    const slug = parts[clipIdx + 2];
-    const path = slug ? `/clip/${id}/${slug}` : `/clip/${id}`;
-    const params = new URLSearchParams();
-    if (autoplay) params.set("autoplay", "1");
-    if (mute || autoplay) params.set("muted", "1");
-    if (autoplay) params.set("loop", "1");
-    const query = params.toString();
-    return `https://medal.tv${path}${query ? `?${query}` : ""}`;
-  }
-
-  const clipsIdx = parts.indexOf("clips");
-  if (clipsIdx >= 0 && parts[clipsIdx + 1]) {
-    const id = parts[clipsIdx + 1];
-    const params = new URLSearchParams();
-    if (autoplay) params.set("autoplay", "1");
-    if (mute || autoplay) params.set("muted", "1");
-    const query = params.toString();
-    return `https://medal.tv/clips/${id}${query ? `?${query}` : ""}`;
-  }
-
-  return url;
-}
-
 export function toEmbedUrl(url, { autoplay = false, mute = false } = {}) {
   if (!url) return url;
 
@@ -102,9 +70,7 @@ export function toEmbedUrl(url, { autoplay = false, mute = false } = {}) {
       }
     }
 
-    if (isMedalUrl(url)) {
-      return toMedalEmbedUrl(url, { autoplay, mute });
-    }
+    // Medal.tv blocks external iframes; callers must resolve to MP4 first.
   } catch {
     return url;
   }
