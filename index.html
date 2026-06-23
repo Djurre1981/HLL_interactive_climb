@@ -19,11 +19,31 @@
       </div>
     </div>
     <div class="header__actions">
+      <div class="header__user hidden" id="header-user">
+        <img id="user-avatar" class="header__avatar hidden" alt="" width="28" height="28" />
+        <span id="user-name" class="header__user-name"></span>
+        <button id="btn-logout" class="btn btn--ghost" type="button">Sign out</button>
+      </div>
       <button id="btn-reset-view" class="btn btn--ghost" type="button" title="Reset zoom and pan">Reset view</button>
       <button id="btn-toggle-edit" class="btn btn--primary" type="button">Add pin</button>
     </div>
   </header>
 
+  <div class="auth-gate hidden" id="auth-gate">
+    <div class="auth-gate__card">
+      <span class="header__tag auth-gate__logo">HLL</span>
+      <h2 id="auth-gate-title">Circle members only</h2>
+      <p id="auth-gate-message" class="auth-gate__message">
+        Sign in with Steam to access trick locations and videos.
+      </p>
+      <a href="/api/auth/steam" class="btn btn--steam" id="btn-steam-login">
+        <span class="btn--steam__icon" aria-hidden="true"></span>
+        Sign in with Steam
+      </a>
+    </div>
+  </div>
+
+  <div id="app-root" class="hidden">
   <main class="layout">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar__section">
@@ -147,6 +167,7 @@
       </div>
     </section>
   </main>
+  </div>
 
   <dialog class="video-modal" id="video-modal">
     <div class="video-modal__inner">

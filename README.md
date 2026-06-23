@@ -12,6 +12,8 @@ Inspired by [Maps Let Loose](https://mattw.io/maps-let-loose/) for map selection
 
 ## Features
 
+- **Steam sign-in** for circle members (allowlist of Steam IDs)
+- **Protected trick data** served only to authenticated, approved users
 - **All 20 HLL tacmaps** with a map selector in the sidebar
 - **Pan & zoom** on high-resolution tactical maps (1920×1920)
 - **Toggle overlays**: grid and strongpoints
@@ -22,17 +24,35 @@ Inspired by [Maps Let Loose](https://mattw.io/maps-let-loose/) for map selection
 
 ## Quick start
 
-Serve the folder over HTTP (required for loading map data):
+### Production (Cloudflare Pages)
 
-```bash
-python -m http.server 8080
-```
+Auth and protected pins require **Cloudflare Pages** with Functions (GitHub Pages alone cannot run the auth API).
 
-Open [http://localhost:8080](http://localhost:8080).
+1. Install dependencies: `npm install`
+2. Copy `.dev.vars.example` → `.dev.vars` and set:
+   - `SESSION_SECRET` — long random string
+   - `ALLOWED_STEAM_IDS` — comma-separated Steam ID64 values for circle members
+   - `STEAM_API_KEY` (optional) — [Steam Web API key](https://steamcommunity.com/dev/apikey) for display names/avatars
+3. Local dev: `npm run dev` → [http://localhost:8788](http://localhost:8788)
+4. Deploy: `npm run deploy` (or connect the GitHub repo in Cloudflare Pages dashboard)
+
+Set the same secrets in Cloudflare: **Pages → your project → Settings → Environment variables**.
+
+### Finding a Steam ID64
+
+After a member signs in once (even if not yet allowlisted), check server logs, or use a site like [steamid.io](https://steamid.io/). Profile URL `https://steamcommunity.com/profiles/76561198…` contains the ID64.
+
+### Legacy static server (no auth)
+
+`python -m http.server 8080` still serves maps/overlays but **will not load tricks** without the auth API.
+
+Open [http://localhost:8080](http://localhost:8080) only for map asset testing.
 
 ## Adding tricks
 
-Edit `data/pins.json` to add built-in pins per map, or use **Add pin** in the UI for personal pins (stored in `localStorage`).
+Edit `data/pins.json` to add built-in pins per map. Pins are **not** served publicly; they are returned from `/api/pins` after Steam auth.
+
+Use **Add pin** in the UI for personal pins (stored in `localStorage`).
 
 ```json
 {

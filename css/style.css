@@ -94,8 +94,95 @@ body {
 
 .header__actions {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
+}
+
+.header__user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: 0.25rem;
+  padding-right: 0.75rem;
+  border-right: 1px solid var(--border);
+}
+
+.header__avatar {
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+
+.header__user-name {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auth-gate {
+  display: grid;
+  place-items: center;
+  min-height: calc(100vh - 65px);
+  padding: 2rem 1rem;
+}
+
+.auth-gate__card {
+  width: min(420px, 100%);
+  padding: 2rem 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.auth-gate__logo {
+  margin: 0 auto 1rem;
+}
+
+.auth-gate__card h2 {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.auth-gate__message {
+  margin: 0 0 1.25rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.btn--steam {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: linear-gradient(180deg, #2a475e 0%, #1b2838 100%);
+  border: 1px solid #3d6b8e;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.btn--steam:hover {
+  filter: brightness(1.08);
+}
+
+.btn--steam__icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 2C6.48 2 2 6.15 2 11.2c0 2.86 1.44 5.41 3.68 7.02l-.96 2.9 3.18-1.03c.98.27 2.02.41 3.1.41 5.52 0 10-4.15 10-9.2S17.52 2 12 2zm4.84 6.45l-1.1 3.2-3.55-.05-2.75 2.55-.55-3.35 2.95-2.35 4-2z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+#app-root.hidden {
+  display: none;
 }
 
 .layout {

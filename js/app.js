@@ -1,5 +1,6 @@
 import { MapViewer } from "./map-viewer.js";
 import { MapOverlays } from "./map-overlays.js";
+import { initAuth, loadProtectedPins } from "./auth.js";
 import {
   DEFAULT_PIN_TAG,
   getPinTag,
@@ -69,7 +70,10 @@ let tagFilters = loadTagFilters();
 const PIN_HOVER_RADIUS_PX = 140;
 
 async function init() {
-  const [spawnData, pinData] = await Promise.all([loadSpawnData(), loadPinData()]);
+  const auth = await initAuth();
+  if (!auth.ok) return;
+
+  const [spawnData, pinData] = await Promise.all([loadSpawnData(), loadProtectedPins()]);
   mapCatalog = spawnData.maps || [];
   pinCatalog = pinData.pins || {};
   currentMapId = loadSelectedMapId(pinData.defaultMapId);
@@ -88,17 +92,6 @@ async function loadSpawnData() {
   } catch (error) {
     console.warn(error);
     return { maps: [] };
-  }
-}
-
-async function loadPinData() {
-  try {
-    const response = await fetch("data/pins.json");
-    if (!response.ok) throw new Error("Failed to load pin data");
-    return response.json();
-  } catch (error) {
-    console.warn(error);
-    return { defaultMapId: "SMDMV2", pins: {} };
   }
 }
 

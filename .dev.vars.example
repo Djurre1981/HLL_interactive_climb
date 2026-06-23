@@ -1,0 +1,5 @@
+# Copy to .dev.vars for local `npm run dev` (never commit .dev.vars).
+SESSION_SECRET=replace-with-a-long-random-string
+ALLOWED_STEAM_IDS=76561198000000000
+# Optional: shows Steam display name + avatar after login
+# STEAM_API_KEY=
