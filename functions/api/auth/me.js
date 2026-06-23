@@ -1,5 +1,5 @@
-import { verifySession } from "../../../lib/session.js";
-import { json } from "../../../lib/response.js";
+import { verifySession } from "../../lib/session.js";
+import { json } from "../../lib/response.js";
 
 export async function onRequestGet(context) {
   const session = await verifySession(context.request, context.env);

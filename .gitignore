@@ -9,3 +9,4 @@ credentials.json
 videos/*.mp4
 .dev.vars
 node_modules/
+.wrangler/

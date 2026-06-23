@@ -1,7 +1,7 @@
-import { isAllowedSteamId } from "../../../lib/allowlist.js";
-import { redirect } from "../../../lib/response.js";
-import { createSessionCookie, getSessionSecret } from "../../../lib/session.js";
-import { fetchSteamProfile, getOrigin, verifySteamCallback } from "../../../lib/steam.js";
+import { isAllowedSteamId } from "../../lib/allowlist.js";
+import { redirect } from "../../lib/response.js";
+import { createSessionCookie, getSessionSecret } from "../../lib/session.js";
+import { fetchSteamProfile, getOrigin, verifySteamCallback } from "../../lib/steam.js";
 
 export async function onRequestGet(context) {
   const { request, env } = context;
