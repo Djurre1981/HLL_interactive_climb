@@ -1,6 +1,12 @@
 import { MapViewer } from "./map-viewer.js";
 import { MapOverlays } from "./map-overlays.js";
 import {
+  DEFAULT_PIN_TAG,
+  getPinTag,
+  normalizePinTag,
+  PIN_TAGS,
+} from "./pin-tags.js";
+import {
   createVideoElement,
   isDirectVideo,
   toEmbedUrl,
@@ -10,6 +16,7 @@ import {
 const STORAGE_KEY_PREFIX = "hll-climb-pins";
 const MAP_STORAGE_KEY = "hll-climb-selected-map";
 const TOGGLE_STORAGE_KEY = "hll-climb-overlay-toggles";
+const TAG_FILTER_STORAGE_KEY = "hll-climb-tag-filters";
 
 const els = {
   viewport: document.getElementById("map-viewport"),
@@ -41,7 +48,6 @@ const els = {
   pinVideo: document.getElementById("pin-video"),
   pinThumbnail: document.getElementById("pin-thumbnail"),
   mapSelect: document.getElementById("map-select"),
-  garrisonSide: document.getElementById("garrison-side"),
 };
 
 let mapViewer;
@@ -58,6 +64,7 @@ let modalPin = null;
 let pendingCoords = null;
 let highlightedPinId = null;
 let previewHideTimer = null;
+let tagFilters = loadTagFilters();
 
 const PIN_HOVER_RADIUS_PX = 140;
 
@@ -68,6 +75,7 @@ async function init() {
   currentMapId = loadSelectedMapId(pinData.defaultMapId);
 
   populateMapSelect();
+  applyTagFiltersToUi();
   bindUi();
   await switchMap(currentMapId, { fit: true });
 }
@@ -113,6 +121,43 @@ function loadToggleState() {
 
 function saveToggleState(state) {
   localStorage.setItem(TOGGLE_STORAGE_KEY, JSON.stringify(state));
+}
+
+function loadTagFilters() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(TAG_FILTER_STORAGE_KEY) || "{}");
+    return Object.fromEntries(
+      PIN_TAGS.map((tag) => [tag.id, saved[tag.id] ?? true])
+    );
+  } catch {
+    return Object.fromEntries(PIN_TAGS.map((tag) => [tag.id, true]));
+  }
+}
+
+function saveTagFilters() {
+  localStorage.setItem(TAG_FILTER_STORAGE_KEY, JSON.stringify(tagFilters));
+}
+
+function applyTagFiltersToUi() {
+  for (const tag of PIN_TAGS) {
+    const button = document.querySelector(`#tag-filters [data-tag="${tag.id}"]`);
+    if (!button) continue;
+    const active = isPinTagVisible(tag.id);
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  }
+}
+
+function isPinTagVisible(tagId) {
+  return tagFilters[tagId] !== false;
+}
+
+function getFilteredPins() {
+  return pins.filter((pin) => isPinTagVisible(pin.tag));
+}
+
+function normalizePin(pin) {
+  return { ...pin, tag: normalizePinTag(pin) };
 }
 
 function populateMapSelect() {
@@ -201,9 +246,9 @@ function upsertUserPin(mapId, pin) {
 }
 
 function mergePins(basePins, userPins) {
-  const byId = new Map(basePins.map((pin) => [pin.id, pin]));
+  const byId = new Map(basePins.map((pin) => [pin.id, normalizePin(pin)]));
   for (const pin of userPins) {
-    byId.set(pin.id, pin);
+    byId.set(pin.id, normalizePin(pin));
   }
   return [...byId.values()];
 }
@@ -244,17 +289,21 @@ function bindUi() {
     mapOverlays?.setToggle("strongpoints", event.target.checked);
     persistToggles();
   });
-  document.getElementById("toggle-garrisons").addEventListener("change", (event) => {
-    mapOverlays?.setToggle("offensiveGarrisons", event.target.checked);
-    persistToggles();
+
+  document.querySelectorAll("#tag-filters [data-tag]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const tagId = button.dataset.tag;
+      tagFilters[tagId] = !isPinTagVisible(tagId);
+      saveTagFilters();
+      applyTagFiltersToUi();
+      onTagFiltersChanged();
+    });
   });
-  document.getElementById("toggle-garrison-radius").addEventListener("change", (event) => {
-    mapOverlays?.setToggle("garrisonRadius", event.target.checked);
-    persistToggles();
-  });
-  els.garrisonSide.addEventListener("change", (event) => {
-    mapOverlays?.setGarrisonSide(event.target.value);
-    persistToggles();
+
+  document.querySelectorAll("#pin-tag-options [data-tag]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setPinFormTag(button.dataset.tag);
+    });
   });
 }
 
@@ -262,9 +311,6 @@ function applyToggleStateToUi() {
   const saved = loadToggleState();
   document.getElementById("toggle-grid").checked = saved.grid ?? false;
   document.getElementById("toggle-strongpoints").checked = saved.strongpoints ?? true;
-  document.getElementById("toggle-garrisons").checked = saved.offensiveGarrisons ?? true;
-  document.getElementById("toggle-garrison-radius").checked = saved.garrisonRadius ?? true;
-  els.garrisonSide.value = saved.garrisonSide ?? "both";
 }
 
 function applyToggleStateToOverlays() {
@@ -272,27 +318,66 @@ function applyToggleStateToOverlays() {
   const saved = loadToggleState();
   mapOverlays.setToggle("grid", saved.grid ?? false);
   mapOverlays.setToggle("strongpoints", saved.strongpoints ?? true);
-  mapOverlays.setToggle("offensiveGarrisons", saved.offensiveGarrisons ?? true);
-  mapOverlays.setToggle("garrisonRadius", saved.garrisonRadius ?? true);
-  mapOverlays.setGarrisonSide(saved.garrisonSide ?? "both");
 }
 
 function persistToggles() {
   saveToggleState({
     grid: document.getElementById("toggle-grid").checked,
     strongpoints: document.getElementById("toggle-strongpoints").checked,
-    offensiveGarrisons: document.getElementById("toggle-garrisons").checked,
-    garrisonRadius: document.getElementById("toggle-garrison-radius").checked,
-    garrisonSide: els.garrisonSide.value,
   });
+}
+
+function onTagFiltersChanged() {
+  if (highlightedPinId && !getFilteredPins().some((pin) => pin.id === highlightedPinId)) {
+    highlightPin(null);
+  }
+  renderPins();
+  renderPinList();
+}
+
+function updatePinCount() {
+  const filtered = getFilteredPins();
+  const mapName = currentMap?.name || "this map";
+  const total = pins.length;
+
+  if (total === 0) {
+    els.pinCount.textContent = `No tricks on ${mapName}`;
+    return;
+  }
+
+  if (filtered.length === 0) {
+    els.pinCount.textContent = `No tricks visible on ${mapName} — enable a tag`;
+    return;
+  }
+
+  if (filtered.length === total) {
+    els.pinCount.textContent = `${filtered.length} trick${filtered.length === 1 ? "" : "s"} on ${mapName}`;
+    return;
+  }
+
+  els.pinCount.textContent = `${filtered.length} of ${total} tricks on ${mapName}`;
+}
+
+function setPinFormTag(tagId) {
+  document.querySelectorAll("#pin-tag-options [data-tag]").forEach((button) => {
+    const active = button.dataset.tag === tagId;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+}
+
+function getPinFormTag() {
+  const active = document.querySelector("#pin-tag-options [data-tag].is-active");
+  return active?.dataset.tag || null;
 }
 
 function renderPins() {
   els.pinsLayer.innerHTML = "";
-  for (const pin of pins) {
+  for (const pin of getFilteredPins()) {
+    const tag = getPinTag(pin.tag);
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "map-pin";
+    button.className = `map-pin ${tag?.className || ""}`;
     button.dataset.id = pin.id;
     button.title = pin.title;
     button.setAttribute("aria-label", pin.title);
@@ -316,15 +401,14 @@ function renderPins() {
     els.pinsLayer.appendChild(button);
   }
 
-  const mapName = currentMap?.name || "this map";
-  els.pinCount.textContent = `${pins.length} trick${pins.length === 1 ? "" : "s"} on ${mapName}`;
+  updatePinCount();
   positionPins();
 }
 
 function positionPins() {
   const buttons = els.pinsLayer.querySelectorAll(".map-pin");
   buttons.forEach((button) => {
-    const pin = pins.find((item) => item.id === button.dataset.id);
+    const pin = getFilteredPins().find((item) => item.id === button.dataset.id);
     if (!pin) return;
 
     button.style.left = `${pin.x}%`;
@@ -335,7 +419,8 @@ function positionPins() {
 
 function renderPinList() {
   els.pinList.innerHTML = "";
-  for (const pin of pins) {
+  for (const pin of getFilteredPins()) {
+    const tag = getPinTag(pin.tag);
     const row = document.createElement("li");
     row.className = "pin-list__row";
 
@@ -344,7 +429,10 @@ function renderPinList() {
     item.className = "pin-list__item";
     item.dataset.id = pin.id;
     item.innerHTML = `
-      <span class="pin-list__title">${escapeHtml(pin.title)}</span>
+      <span class="pin-list__title-row">
+        <span class="pin-list__title">${escapeHtml(pin.title)}</span>
+        <span class="pin-list__tag pin-list__tag--${pin.tag}">${escapeHtml(tag?.label || pin.tag)}</span>
+      </span>
       <span class="pin-list__meta">${escapeHtml(pin.description || "No description")}</span>
     `;
 
@@ -393,7 +481,8 @@ function highlightPin(pinId) {
 }
 
 function findClosestPin(clientX, clientY) {
-  if (!mapViewer || pins.length === 0) return null;
+  const visiblePins = getFilteredPins();
+  if (!mapViewer || visiblePins.length === 0) return null;
 
   const rect = els.viewport.getBoundingClientRect();
   const mx = clientX - rect.left;
@@ -402,7 +491,7 @@ function findClosestPin(clientX, clientY) {
   let closest = null;
   let minDist = Infinity;
 
-  for (const pin of pins) {
+  for (const pin of visiblePins) {
     const point = mapViewer.mapPercentToScreen(pin.x, pin.y);
     const dist = Math.hypot(point.x - mx, point.y - my);
     if (dist < minDist) {
@@ -542,6 +631,7 @@ function startAddPin() {
   els.pinCoords.textContent = "No position selected";
   els.btnSavePin.disabled = true;
   els.btnSavePin.textContent = "Save pin";
+  setPinFormTag(DEFAULT_PIN_TAG);
   els.editPanelTitle.textContent = "New pin";
   els.editPanelHint.textContent =
     "Click anywhere on the map to place a pin, then fill in the details.";
@@ -564,6 +654,7 @@ function startEditPin(pin) {
   els.pinDescription.value = pin.description || "";
   els.pinVideo.value = pin.videoUrl || "";
   els.pinThumbnail.value = pin.thumbnail || "";
+  setPinFormTag(pin.tag);
   els.pinCoords.textContent = `Position: ${roundCoord(pin.x)}%, ${roundCoord(pin.y)}%`;
   els.btnSavePin.disabled = false;
   els.btnSavePin.textContent = "Save changes";
@@ -588,6 +679,7 @@ function closeEditPanel() {
   els.pinCoords.textContent = "No position selected";
   els.btnSavePin.disabled = true;
   els.btnSavePin.textContent = "Save pin";
+  setPinFormTag(DEFAULT_PIN_TAG);
   updateEditToggleButton();
   highlightPin(null);
 }
@@ -652,11 +744,15 @@ function onSavePin(event) {
   event.preventDefault();
   if (!pendingCoords) return;
 
+  const tag = getPinFormTag();
+  if (!tag) return;
+
   const pinData = {
     title: els.pinTitle.value.trim(),
     description: els.pinDescription.value.trim(),
     videoUrl: els.pinVideo.value.trim(),
     thumbnail: els.pinThumbnail.value.trim() || undefined,
+    tag,
     x: pendingCoords.x,
     y: pendingCoords.y,
   };

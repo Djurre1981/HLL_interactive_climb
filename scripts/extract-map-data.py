@@ -31,11 +31,6 @@ MAP_META = [
     {"id": "Utah", "name": "Utah Beach", "file": "Utah_NoGrid.webp"},
 ]
 
-RECT_RE = re.compile(r"\[(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\]")
-COORD_RE = re.compile(
-    r'(?:left|"left")\s*:\s*([\d.]+)\s*,\s*(?:top|"top")\s*:\s*([\d.]+)'
-)
-
 
 def pct(value: float) -> float:
     return round(value / MAP_SIZE * 100, 2)
@@ -91,91 +86,9 @@ def parse_points(block: str) -> tuple[dict, dict]:
     return flat, grids
 
 
-def extract_map_section(block: str, map_id: str) -> str:
-    marker = f'"{map_id}":'
-    alt = f"{map_id}:"
-    idx = block.find(marker)
-    if idx == -1:
-        idx = block.find(alt)
-        marker = alt
-    if idx == -1:
-        return ""
-
-    start = idx + len(marker)
-    depth = 0
-    for i, ch in enumerate(block[start:], start):
-        if ch == "{":
-            depth += 1
-        elif ch == "}":
-            depth -= 1
-            if depth == 0:
-                return block[start : i + 1]
-    return ""
-
-
-def parse_garrisons(defaults_block: str) -> dict:
-    result = {}
-    for meta in MAP_META:
-        map_id = meta["id"]
-        section = extract_map_section(defaults_block, map_id)
-        entry = {"a": [], "b": []}
-        if not section:
-            result[map_id] = entry
-            continue
-
-        og_idx = section.find("offensive_garrisons:")
-        if og_idx == -1:
-            result[map_id] = entry
-            continue
-
-        og_start = og_idx + len("offensive_garrisons:")
-        og_block = extract_braced(og_start, section)
-        for side in ("b", "a"):
-            side_idx = og_block.find(f"{side}:")
-            if side_idx == -1:
-                continue
-            side_start = side_idx + len(f"{side}:")
-            side_block = extract_bracketed(side_start, og_block)
-            for left, top in COORD_RE.findall(side_block):
-                entry[side].append({"x": pct(float(left)), "y": pct(float(top)), "side": side})
-
-        result[map_id] = entry
-    return result
-
-
-def extract_braced(start: int, text: str) -> str:
-    while start < len(text) and text[start] not in "{":
-        start += 1
-    depth = 0
-    for i in range(start, len(text)):
-        if text[i] == "{":
-            depth += 1
-        elif text[i] == "}":
-            depth -= 1
-            if depth == 0:
-                return text[start : i + 1]
-    return ""
-
-
-def extract_bracketed(start: int, text: str) -> str:
-    while start < len(text) and text[start] != "[":
-        start += 1
-    depth = 0
-    for i in range(start, len(text)):
-        if text[i] == "[":
-            depth += 1
-        elif text[i] == "]":
-            depth -= 1
-            if depth == 0:
-                return text[start : i + 1]
-    return ""
-
-
 def main() -> None:
     text = SOURCE.read_text(encoding="utf-8")
     points, point_grids = parse_points(extract_block(text, "POINT_COORDS"))
-    defaults_block = extract_block(text, "DEFAULT_ELEMENTS")
-    garrisons = parse_garrisons(defaults_block)
 
     maps = []
     for meta in MAP_META:
@@ -186,7 +99,6 @@ def main() -> None:
                 "image": f"maps/no-grid/{meta['file']}",
                 "strongpoints": points.get(map_id, []),
                 "strongpointGrid": point_grids.get(map_id, []),
-                "offensiveGarrisons": garrisons.get(map_id, {"a": [], "b": []}),
             }
         )
 

@@ -14,7 +14,7 @@ Inspired by [Maps Let Loose](https://mattw.io/maps-let-loose/) for map selection
 
 - **All 20 HLL tacmaps** with a map selector in the sidebar
 - **Pan & zoom** on high-resolution tactical maps (1920×1920)
-- **Toggle overlays**: grid, strongpoints, offensive garrisons, and 200m garrison radius
+- **Toggle overlays**: grid and strongpoints
 - **Pins** mark trick locations with title and description
 - **Hover** a pin to preview the trick video
 - **Click** a pin to play the full embedded video (YouTube, Vimeo, or local `.mp4`)

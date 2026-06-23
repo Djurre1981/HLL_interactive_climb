@@ -45,23 +45,25 @@
             <input type="checkbox" id="toggle-strongpoints" checked />
             <span>Strongpoints visible</span>
           </label>
-          <label class="toggle-row">
-            <input type="checkbox" id="toggle-garrisons" checked />
-            <span>Offensive garrisons</span>
-          </label>
-          <label class="toggle-row">
-            <input type="checkbox" id="toggle-garrison-radius" checked />
-            <span>Garrison radius (200m)</span>
-          </label>
         </div>
-        <label class="sidebar__select-label sidebar__select-label--compact">
-          Garrison side
-          <select id="garrison-side" class="sidebar__select">
-            <option value="both">Both sides</option>
-            <option value="a">Side A</option>
-            <option value="b">Side B</option>
-          </select>
-        </label>
+      </div>
+
+      <div class="sidebar__section">
+        <h2>Tags</h2>
+        <div class="tag-filters" id="tag-filters" role="group" aria-label="Filter by tag">
+          <button type="button" class="tag-filter tag-filter--mg-spot is-active" data-tag="mg-spot" aria-pressed="true">
+            <span class="tag-swatch tag-swatch--mg-spot" aria-hidden="true"></span>
+            <span>mg spot</span>
+          </button>
+          <button type="button" class="tag-filter tag-filter--climb is-active" data-tag="climb" aria-pressed="true">
+            <span class="tag-swatch tag-swatch--climb" aria-hidden="true"></span>
+            <span>climb</span>
+          </button>
+          <button type="button" class="tag-filter tag-filter--location is-active" data-tag="location" aria-pressed="true">
+            <span class="tag-swatch tag-swatch--location" aria-hidden="true"></span>
+            <span>location</span>
+          </button>
+        </div>
       </div>
 
       <div class="sidebar__section">
@@ -89,6 +91,23 @@
             Preview thumbnail (optional)
             <input type="text" id="pin-thumbnail" placeholder="Image URL for hover preview" />
           </label>
+          <fieldset class="pin-form__tags">
+            <legend>Tag</legend>
+            <div class="tag-filters pin-form__tag-options" id="pin-tag-options" role="radiogroup" aria-label="Pin tag">
+              <button type="button" class="tag-filter tag-filter--mg-spot" data-tag="mg-spot" aria-pressed="false">
+                <span class="tag-swatch tag-swatch--mg-spot" aria-hidden="true"></span>
+                <span>mg spot</span>
+              </button>
+              <button type="button" class="tag-filter tag-filter--climb is-active" data-tag="climb" aria-pressed="true">
+                <span class="tag-swatch tag-swatch--climb" aria-hidden="true"></span>
+                <span>climb</span>
+              </button>
+              <button type="button" class="tag-filter tag-filter--location" data-tag="location" aria-pressed="false">
+                <span class="tag-swatch tag-swatch--location" aria-hidden="true"></span>
+                <span>location</span>
+              </button>
+            </div>
+          </fieldset>
           <div class="pin-form__coords" id="pin-coords">No position selected</div>
           <div class="pin-form__actions">
             <button type="submit" class="btn btn--primary" disabled id="btn-save-pin">Save pin</button>

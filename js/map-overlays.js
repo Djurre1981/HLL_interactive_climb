@@ -1,5 +1,4 @@
 const MAP_SIZE = 1920;
-const GARRISON_RADIUS_PCT = (190 / MAP_SIZE) * 100;
 
 export class MapOverlays {
   constructor(stage, image) {
@@ -11,14 +10,10 @@ export class MapOverlays {
     this.toggles = {
       grid: false,
       strongpoints: true,
-      offensiveGarrisons: true,
-      garrisonRadius: true,
     };
-    this.garrisonSide = "both";
 
     this.gridLayer = this.createLayer("map-overlays map-overlays--grid");
     this.strongpointsLayer = this.createLayer("map-overlays map-overlays--strongpoints");
-    this.garrisonsLayer = this.createLayer("map-overlays map-overlays--garrisons");
 
     this.spImage = null;
     this.spImageMapId = null;
@@ -70,11 +65,6 @@ export class MapOverlays {
 
   setToggle(key, enabled) {
     this.toggles[key] = enabled;
-    this.render();
-  }
-
-  setGarrisonSide(side) {
-    this.garrisonSide = side;
     this.render();
   }
 
@@ -164,12 +154,10 @@ export class MapOverlays {
   render() {
     this.gridLayer.classList.toggle("hidden", !this.toggles.grid);
     this.strongpointsLayer.classList.toggle("hidden", !this.toggles.strongpoints);
-    this.garrisonsLayer.classList.toggle("hidden", !this.toggles.offensiveGarrisons);
 
     if (!this.mapData) return;
 
     this.renderStrongpoints();
-    this.renderGarrisons();
   }
 
   renderStrongpoints() {
@@ -206,40 +194,6 @@ export class MapOverlays {
       marker.style.width = `${label.width}%`;
       marker.style.height = `${label.height}%`;
       this.strongpointsLayer.appendChild(marker);
-    }
-  }
-
-  renderGarrisons() {
-    this.garrisonsLayer.innerHTML = "";
-    if (!this.toggles.offensiveGarrisons) return;
-
-    const garrisons = this.mapData.offensiveGarrisons || { a: [], b: [] };
-    const sides =
-      this.garrisonSide === "both" ? ["a", "b"] : [this.garrisonSide];
-
-    for (const side of sides) {
-      for (const spawn of garrisons[side] || []) {
-        const wrap = document.createElement("div");
-        wrap.className = `overlay-garrison overlay-garrison--${side}`;
-        wrap.style.left = `${spawn.x}%`;
-        wrap.style.top = `${spawn.y}%`;
-        wrap.title = `Offensive garrison (side ${side.toUpperCase()})`;
-
-        const icon = document.createElement("span");
-        icon.className = "overlay-garrison__icon";
-        wrap.appendChild(icon);
-        this.garrisonsLayer.appendChild(wrap);
-
-        if (this.toggles.garrisonRadius) {
-          const radius = document.createElement("div");
-          radius.className = `overlay-garrison-radius overlay-garrison-radius--${side}`;
-          radius.style.left = `${spawn.x}%`;
-          radius.style.top = `${spawn.y}%`;
-          radius.style.width = `${GARRISON_RADIUS_PCT}%`;
-          radius.style.height = `${GARRISON_RADIUS_PCT}%`;
-          this.garrisonsLayer.appendChild(radius);
-        }
-      }
     }
   }
 }
