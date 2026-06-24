@@ -37,12 +37,25 @@ export async function loadUsersData(env) {
 }
 
 async function migrateEnvUsers(env, data) {
+  const envAdmins = new Set(parseSteamIds(env.ADMIN_STEAM_IDS));
   const envUsers = parseSteamIds(env.USER_STEAM_IDS);
-  const adminIds = new Set(parseSteamIds(env.ADMIN_STEAM_IDS));
   let changed = false;
 
+  for (const steamId of envAdmins) {
+    const existing = data.users.find((user) => user.steamId === steamId);
+    if (existing) {
+      if (existing.role !== "admin") {
+        existing.role = "admin";
+        changed = true;
+      }
+    } else {
+      data.users.push({ steamId, role: "admin" });
+      changed = true;
+    }
+  }
+
   for (const steamId of envUsers) {
-    if (adminIds.has(steamId)) {
+    if (envAdmins.has(steamId)) {
       continue;
     }
     if (!data.users.some((user) => user.steamId === steamId)) {

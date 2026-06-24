@@ -29,6 +29,7 @@ const els = {
   stage: document.getElementById("map-stage"),
   image: document.getElementById("map-image"),
   pinsLayer: document.getElementById("map-pins"),
+  draftPin: document.getElementById("map-draft-pin"),
   pinList: document.getElementById("pin-list"),
   pinCount: document.getElementById("pin-count"),
   zoomLabel: document.getElementById("zoom-label"),
@@ -155,6 +156,14 @@ function isPinTagVisible(tagId) {
 
 function getFilteredPins() {
   return pins.filter((pin) => isPinTagVisible(pin.tag));
+}
+
+function getMapPins() {
+  let visible = getFilteredPins();
+  if (panelMode === "edit" && editingPinId) {
+    visible = visible.filter((pin) => pin.id !== editingPinId);
+  }
+  return visible;
 }
 
 function normalizePin(pin) {
@@ -288,6 +297,7 @@ function bindUi() {
   document.querySelectorAll("#pin-tag-options [data-tag]").forEach((button) => {
     button.addEventListener("click", () => {
       setPinFormTag(button.dataset.tag);
+      updateDraftPin();
     });
   });
 }
@@ -356,9 +366,36 @@ function getPinFormTag() {
   return active?.dataset.tag || null;
 }
 
+function updateDraftPin() {
+  if (!els.draftPin) return;
+
+  if (!pendingCoords || panelMode === null) {
+    els.draftPin.classList.add("hidden");
+    return;
+  }
+
+  const tagId = getPinFormTag() || DEFAULT_PIN_TAG;
+  const tag = getPinTag(tagId);
+  els.draftPin.className = `map-pin map-pin--draft ${tag?.className || ""}`;
+  els.draftPin.style.left = `${pendingCoords.x}%`;
+  els.draftPin.style.top = `${pendingCoords.y}%`;
+  els.draftPin.classList.remove("hidden");
+}
+
+function hidePlacementCrosshair() {
+  els.crosshair.classList.add("hidden");
+}
+
+function showPlacementCrosshairAtScreen(x, y) {
+  const rect = els.viewport.getBoundingClientRect();
+  els.crosshair.classList.remove("hidden");
+  els.crosshair.style.left = `${x - rect.left}px`;
+  els.crosshair.style.top = `${y - rect.top}px`;
+}
+
 function renderPins() {
   els.pinsLayer.innerHTML = "";
-  for (const pin of getFilteredPins()) {
+  for (const pin of getMapPins()) {
     const tag = getPinTag(pin.tag);
     const button = document.createElement("button");
     button.type = "button";
@@ -671,7 +708,8 @@ function startAddPin() {
 
   mapViewer?.setEditMode(true);
   els.editPanel.classList.remove("hidden");
-  els.crosshair.classList.add("hidden");
+  hidePlacementCrosshair();
+  els.draftPin?.classList.add("hidden");
   els.pinForm.reset();
   els.pinCoords.textContent = "No position selected";
   els.btnSavePin.disabled = true;
@@ -680,9 +718,11 @@ function startAddPin() {
   setPinFormTag(DEFAULT_PIN_TAG);
   els.editPanelTitle.textContent = "New pin";
   els.editPanelHint.textContent =
-    "Click anywhere on the map to place a pin, then fill in the details.";
+    "Move the crosshair over the map and click to place a pin, then fill in the details.";
   updateEditToggleButton();
   highlightPin(null);
+  updateDraftPin();
+  renderPins();
 }
 
 function startEditPin(pin) {
@@ -709,7 +749,9 @@ function startEditPin(pin) {
   els.editPanelHint.textContent = "Update the details below. Click the map to move the pin.";
   updateEditToggleButton();
   highlightPin(pin.id);
-  showCrosshairAtPercent(pin.x, pin.y);
+  hidePlacementCrosshair();
+  updateDraftPin();
+  renderPins();
   focusPin(pin);
 }
 
@@ -721,7 +763,7 @@ function closeEditPanel() {
 
   mapViewer?.setEditMode(false);
   els.editPanel.classList.add("hidden");
-  els.crosshair.classList.add("hidden");
+  hidePlacementCrosshair();
   els.pinForm.reset();
   els.pinCoords.textContent = "No position selected";
   els.btnSavePin.disabled = true;
@@ -730,6 +772,8 @@ function closeEditPanel() {
   setPinFormTag(DEFAULT_PIN_TAG);
   updateEditToggleButton();
   highlightPin(null);
+  updateDraftPin();
+  renderPins();
 }
 
 function updateEditToggleButton() {
@@ -739,16 +783,9 @@ function updateEditToggleButton() {
   els.btnToggleEdit.classList.toggle("btn--ghost", isOpen);
 }
 
-function showCrosshairAtPercent(xPercent, yPercent) {
-  const point = mapViewer.mapPercentToScreen(xPercent, yPercent);
-  els.crosshair.classList.remove("hidden");
-  els.crosshair.style.left = `${point.x}px`;
-  els.crosshair.style.top = `${point.y}px`;
-}
-
 function onViewportClick(event) {
   if (!editMode) return;
-  if (event.target.closest(".map-pin")) return;
+  if (event.target.closest(".map-pin:not(.map-pin--draft)")) return;
 
   const coords = mapViewer.screenToMapPercent(event.clientX, event.clientY);
   if (coords.x < 0 || coords.y < 0 || coords.x > 100 || coords.y > 100) return;
@@ -761,17 +798,13 @@ function onViewportClick(event) {
   els.pinCoords.textContent = `Position: ${pendingCoords.x}%, ${pendingCoords.y}%`;
   els.btnSavePin.disabled = false;
 
-  const rect = els.viewport.getBoundingClientRect();
-  els.crosshair.classList.remove("hidden");
-  els.crosshair.style.left = `${event.clientX - rect.left}px`;
-  els.crosshair.style.top = `${event.clientY - rect.top}px`;
+  hidePlacementCrosshair();
+  updateDraftPin();
 }
 
 function onViewportMouseMove(event) {
-  if (editMode && pendingCoords) {
-    const rect = els.viewport.getBoundingClientRect();
-    els.crosshair.style.left = `${event.clientX - rect.left}px`;
-    els.crosshair.style.top = `${event.clientY - rect.top}px`;
+  if (editMode && !pendingCoords) {
+    showPlacementCrosshairAtScreen(event.clientX, event.clientY);
     return;
   }
 
@@ -783,6 +816,11 @@ function onViewportMouseMove(event) {
 }
 
 function onViewportMouseLeave() {
+  if (editMode && !pendingCoords) {
+    hidePlacementCrosshair();
+    return;
+  }
+
   if (!editMode) {
     highlightPin(null);
   }

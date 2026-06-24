@@ -32,7 +32,11 @@ export async function getUserRole(steamId, env) {
   }
 
   const data = await loadUsersData(env);
-  if (data.users.some((user) => user.steamId === id)) {
+  const member = data.users.find((user) => user.steamId === id);
+  if (member?.role === "admin") {
+    return "admin";
+  }
+  if (member) {
     return "user";
   }
 
@@ -61,7 +65,12 @@ export async function listAllMembers(env) {
     if (seen.has(user.steamId)) {
       continue;
     }
-    members.push({ steamId: user.steamId, role: "user", removable: true });
+    const isAdmin = user.role === "admin";
+    members.push({
+      steamId: user.steamId,
+      role: isAdmin ? "admin" : "user",
+      removable: !isAdmin,
+    });
     seen.add(user.steamId);
   }
 
@@ -93,6 +102,10 @@ export async function removeManagedUser(env, steamId) {
   }
 
   const data = await loadUsersData(env);
+  const member = data.users.find((user) => user.steamId === id);
+  if (member?.role === "admin") {
+    return { error: "Cannot remove an administrator" };
+  }
   const index = data.users.findIndex((user) => user.steamId === id);
   if (index < 0) {
     return { error: "User not found" };
