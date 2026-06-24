@@ -1,8 +1,9 @@
-# Copy to .dev.vars for local `npm run dev` (never commit .dev.vars).
-SESSION_SECRET=replace-with-a-long-random-string
-ADMIN_STEAM_IDS=76561198000000000
-USER_STEAM_IDS=
-# Legacy fallback: if ADMIN_STEAM_IDS is empty, ALLOWED_STEAM_IDS is treated as admins.
-# ALLOWED_STEAM_IDS=
-# Optional: Steam Web API key (https://steamcommunity.com/dev/apikey). Falls back to public profile XML if omitted.
-# STEAM_API_KEY=
+# Copy to .dev.vars for local `npm run dev` (never commit .dev.vars).
+SESSION_SECRET=replace-with-a-long-random-string
+OWNER_STEAM_IDS=76561198000000000
+ADMIN_STEAM_IDS=76561198000000000
+USER_STEAM_IDS=
+# Legacy fallback: if ADMIN_STEAM_IDS is empty, ALLOWED_STEAM_IDS is treated as admins.
+# ALLOWED_STEAM_IDS=
+# Optional: Steam Web API key (https://steamcommunity.com/dev/apikey). Falls back to public profile XML if omitted.
+# STEAM_API_KEY=

@@ -35,3 +35,11 @@ export async function removeManagedUser(steamId) {
     method: "DELETE",
   });
 }
+
+export async function updateManagedUserRole(steamId, role) {
+  const data = await adminApiRequest(`/api/admin/users/${encodeURIComponent(steamId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
+  });
+  return data.user;
+}

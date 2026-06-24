@@ -227,7 +227,7 @@ async function switchMap(mapId, { fit = false } = {}) {
 function canModifyPin(pin) {
   const user = getCurrentUser();
   if (!user || !pin) return false;
-  if (user.role === "admin") return true;
+  if (user.role === "admin" || user.role === "owner") return true;
   return pin.createdBy === user.steamId;
 }
 

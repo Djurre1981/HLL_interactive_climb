@@ -15,6 +15,7 @@ function seedFromEnv(env) {
       steamId,
       role: "user",
     })),
+    revoked: [],
   };
 }
 
@@ -37,11 +38,33 @@ export async function loadUsersData(env) {
 }
 
 async function migrateEnvUsers(env, data) {
+  const envOwners = new Set(parseSteamIds(env.OWNER_STEAM_IDS));
   const envAdmins = new Set(parseSteamIds(env.ADMIN_STEAM_IDS));
   const envUsers = parseSteamIds(env.USER_STEAM_IDS);
   let changed = false;
 
+  if (!Array.isArray(data.revoked)) {
+    data.revoked = [];
+    changed = true;
+  }
+
+  for (const steamId of envOwners) {
+    const existing = data.users.find((user) => user.steamId === steamId);
+    if (existing) {
+      if (existing.role !== "owner") {
+        existing.role = "owner";
+        changed = true;
+      }
+    } else {
+      data.users.push({ steamId, role: "owner" });
+      changed = true;
+    }
+  }
+
   for (const steamId of envAdmins) {
+    if (envOwners.has(steamId)) {
+      continue;
+    }
     const existing = data.users.find((user) => user.steamId === steamId);
     if (existing) {
       if (existing.role !== "admin") {

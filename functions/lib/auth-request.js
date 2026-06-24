@@ -1,4 +1,4 @@
-import { getUserRole } from "./roles.js";
+import { getUserRole, isStaffRole } from "./roles.js";
 import { errorResponse } from "./response.js";
 import { verifySession } from "./session.js";
 
@@ -22,8 +22,21 @@ export async function requireAdmin(context) {
     return auth;
   }
 
-  if (auth.role !== "admin") {
+  if (!isStaffRole(auth.role)) {
     return { error: errorResponse("Administrators only", 403) };
+  }
+
+  return auth;
+}
+
+export async function requireOwner(context) {
+  const auth = await requireAuth(context);
+  if (auth.error) {
+    return auth;
+  }
+
+  if (auth.role !== "owner") {
+    return { error: errorResponse("Owners only", 403) };
   }
 
   return auth;

@@ -13,6 +13,7 @@ async function enrichMembers(members, env) {
         name: profile.name,
         role: member.role,
         removable: member.removable,
+        roleEditable: member.roleEditable,
       };
     })
   );
@@ -24,7 +25,7 @@ export async function onRequestGet(context) {
     return auth.error;
   }
 
-  const members = await listAllMembers(context.env);
+  const members = await listAllMembers(context.env, auth.role);
   const users = await enrichMembers(members, context.env);
   return json({ users });
 }

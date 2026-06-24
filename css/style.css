@@ -1060,6 +1060,11 @@ body {
   background: rgba(196, 163, 90, 0.15);
 }
 
+.admin-panel__role--owner {
+  color: #f0c8e8;
+  background: rgba(196, 90, 163, 0.15);
+}
+
 .admin-panel__role--user {
   color: #a8c8f0;
   background: rgba(74, 126, 196, 0.15);
@@ -1067,6 +1072,17 @@ body {
 
 .admin-panel__actions {
   width: 6.5rem;
+}
+
+.admin-panel__role-select {
+  width: 100%;
+  max-width: 11rem;
+  padding: 0.2rem 0.35rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 0.78rem;
 }
 
 .admin-panel__empty {

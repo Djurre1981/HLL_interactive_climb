@@ -1,5 +1,5 @@
 export function canModifyPin(pin, steamId, role) {
-  if (role === "admin") {
+  if (role === "admin" || role === "owner") {
     return true;
   }
   if (role === "user") {

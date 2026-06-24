@@ -1,4 +1,9 @@
-import { addManagedUser, fetchManagedUsers, removeManagedUser } from "./admin-api.js";
+import {
+  addManagedUser,
+  fetchManagedUsers,
+  removeManagedUser,
+  updateManagedUserRole,
+} from "./admin-api.js";
 import { getCurrentUser } from "./auth.js";
 
 const els = {
@@ -10,14 +15,28 @@ const els = {
   usersBody: document.getElementById("admin-users-body"),
   status: document.getElementById("admin-panel-status"),
   submitButton: document.getElementById("btn-admin-add-user"),
+  headerNote: document.querySelector(".admin-panel__header p"),
+};
+
+const ROLE_ORDER = { owner: 0, admin: 1, user: 2 };
+const ROLE_LABELS = {
+  owner: "Owner",
+  admin: "Administrator",
+  user: "User",
 };
 
 let users = [];
+let currentUser = null;
 
 export function initAdminPanel() {
-  const user = getCurrentUser();
-  if (user?.role !== "admin" || !els.panel) {
+  currentUser = getCurrentUser();
+  if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "owner") || !els.panel) {
     return;
+  }
+
+  if (currentUser.role === "owner" && els.headerNote) {
+    els.headerNote.textContent =
+      "Add or remove circle members. Owners can change roles and remove administrators.";
   }
 
   els.openButton?.classList.remove("hidden");
@@ -52,8 +71,9 @@ async function loadUsers() {
   try {
     users = await fetchManagedUsers();
     users.sort((a, b) => {
-      if (a.role !== b.role) {
-        return a.role === "admin" ? -1 : 1;
+      const roleDiff = (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9);
+      if (roleDiff !== 0) {
+        return roleDiff;
       }
       return (a.name || a.steamId).localeCompare(b.name || b.steamId);
     });
@@ -63,6 +83,30 @@ async function loadUsers() {
     console.error(error);
     setStatus(error.message || "Could not load members", true);
   }
+}
+
+function renderRoleCell(user) {
+  if (user.roleEditable) {
+    const select = document.createElement("select");
+    select.className = "admin-panel__role-select";
+    select.setAttribute("aria-label", `Role for ${user.name || user.steamId}`);
+
+    for (const role of ["user", "admin"]) {
+      const option = document.createElement("option");
+      option.value = role;
+      option.textContent = ROLE_LABELS[role];
+      option.selected = user.role === role;
+      select.appendChild(option);
+    }
+
+    select.addEventListener("change", () => void onRoleChange(user, select));
+    return select;
+  }
+
+  const roleBadge = document.createElement("span");
+  roleBadge.className = `admin-panel__role admin-panel__role--${user.role}`;
+  roleBadge.textContent = ROLE_LABELS[user.role] || user.role;
+  return roleBadge;
 }
 
 function renderUsers() {
@@ -88,10 +132,7 @@ function renderUsers() {
     steamIdCell.textContent = user.steamId;
 
     const roleCell = document.createElement("td");
-    const roleBadge = document.createElement("span");
-    roleBadge.className = `admin-panel__role admin-panel__role--${user.role}`;
-    roleBadge.textContent = user.role === "admin" ? "Administrator" : "User";
-    roleCell.appendChild(roleBadge);
+    roleCell.appendChild(renderRoleCell(user));
 
     const actionsCell = document.createElement("td");
     actionsCell.className = "admin-panel__actions";
@@ -108,6 +149,34 @@ function renderUsers() {
 
     row.append(nameCell, steamIdCell, roleCell, actionsCell);
     els.usersBody.appendChild(row);
+  }
+}
+
+async function onRoleChange(user, select) {
+  const newRole = select.value;
+  if (newRole === user.role) {
+    return;
+  }
+
+  const label = user.name || user.steamId;
+  const previousRole = user.role;
+  select.disabled = true;
+  setStatus(`Updating role for ${label}…`);
+
+  try {
+    const updated = await updateManagedUserRole(user.steamId, newRole);
+    user.role = updated.role;
+    user.removable = updated.removable;
+    user.roleEditable = updated.roleEditable;
+    user.name = updated.name || user.name;
+    await loadUsers();
+    setStatus(`Updated ${label} to ${ROLE_LABELS[newRole]}.`);
+  } catch (error) {
+    console.error(error);
+    select.value = previousRole;
+    setStatus(error.message || "Could not update role", true);
+  } finally {
+    select.disabled = false;
   }
 }
 
