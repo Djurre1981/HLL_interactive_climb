@@ -433,6 +433,13 @@ body {
   color: var(--text-muted);
 }
 
+.pin-list__uploader {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--accent-dim);
+}
+
 .pin-form {
   display: flex;
   flex-direction: column;
@@ -509,8 +516,16 @@ body {
   padding: 0;
 }
 
-.pin-form__video-options {
-  margin-top: 0.35rem;
+.pin-form__video-help {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.pin-form__video-help strong {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .btn {
@@ -1078,6 +1093,12 @@ body {
   margin: 0.35rem 0 0;
   font-size: 0.85rem;
   color: var(--text-muted);
+}
+
+.video-modal__uploader {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: var(--accent-dim);
 }
 
 .video-modal__edit {

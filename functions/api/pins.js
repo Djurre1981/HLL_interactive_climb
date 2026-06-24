@@ -1,4 +1,5 @@
 import { requireAuth } from "../lib/auth-request.js";
+import { enrichPinsData, resolveCreatorName } from "../lib/pin-creators.js";
 import { loadPinsData, savePinsData } from "../lib/pins-store.js";
 import { errorResponse, json } from "../lib/response.js";
 
@@ -36,7 +37,8 @@ export async function onRequestGet(context) {
   }
 
   const data = await loadPinsData(context.env);
-  return json(data);
+  const enriched = await enrichPinsData(data, context.env);
+  return json(enriched);
 }
 
 export async function onRequestPost(context) {
@@ -62,6 +64,12 @@ export async function onRequestPost(context) {
     return errorResponse(built.error, 400);
   }
 
+  const createdByName = await resolveCreatorName(
+    auth.session.steamId,
+    context.env,
+    auth.session
+  );
+
   const data = await loadPinsData(context.env);
   if (!data.pins[mapId]) {
     data.pins[mapId] = [];
@@ -71,6 +79,7 @@ export async function onRequestPost(context) {
     ...built.pin,
     id: built.pin.id || `pin-${crypto.randomUUID()}`,
     createdBy: auth.session.steamId,
+    createdByName,
   };
 
   data.pins[mapId].push(newPin);

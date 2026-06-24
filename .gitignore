@@ -2,11 +2,9 @@ _maps_source/
 secrets
 .env
 .env.*
-!/.env.example
 client_secret.json
 token.json
 credentials.json
-videos/*.mp4
 .dev.vars
 node_modules/
 .wrangler/

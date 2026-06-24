@@ -1,5 +1,23 @@
 export function isDirectVideo(url) {
-  return /\.(mp4|webm|ogg)(\?|$)/i.test(url);
+  return /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url);
+}
+
+export function isDiscordMediaUrl(url) {
+  const hostname = getHostname(url);
+  if (hostname !== "cdn.discordapp.com" && hostname !== "media.discordapp.net") {
+    return false;
+  }
+
+  const parsed = parseMediaUrl(url);
+  return parsed?.pathname.includes("/attachments/") ?? false;
+}
+
+export function isPlayableDirectUrl(url) {
+  return isDirectVideo(url) || isDiscordMediaUrl(url);
+}
+
+export function normalizeVideoUrl(url) {
+  return String(url || "").trim();
 }
 
 function parseMediaUrl(url) {
@@ -30,10 +48,33 @@ export function isYoutubeUrl(url) {
   return hostname.includes("youtube.com") || hostname === "youtu.be";
 }
 
+export function isVimeoUrl(url) {
+  return getHostname(url).includes("vimeo.com");
+}
+
+export function isSupportedVideoUrl(url) {
+  const normalized = normalizeVideoUrl(url);
+  if (!normalized) {
+    return false;
+  }
+
+  return (
+    isYoutubeUrl(normalized) ||
+    isMedalUrl(normalized) ||
+    isDiscordMediaUrl(normalized) ||
+    isPlayableDirectUrl(normalized) ||
+    isVimeoUrl(normalized)
+  );
+}
+
+export function getUnsupportedVideoUrlMessage() {
+  return "Use a YouTube, Medal.tv, Discord attachment, Vimeo, or direct .mp4 link.";
+}
+
 export function toEmbedUrl(url, { autoplay = false, mute = false } = {}) {
   if (!url) return url;
 
-  if (isDirectVideo(url)) return url;
+  if (isPlayableDirectUrl(url)) return url;
 
   try {
     const parsed = parseMediaUrl(url);
@@ -79,7 +120,7 @@ export function toEmbedUrl(url, { autoplay = false, mute = false } = {}) {
 }
 
 export function createVideoElement(url, { autoplay = false, muted = false, controls = true } = {}) {
-  if (isDirectVideo(url)) {
+  if (isPlayableDirectUrl(url)) {
     const video = document.createElement("video");
     video.src = url;
     video.controls = controls;

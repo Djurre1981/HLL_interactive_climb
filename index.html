@@ -105,22 +105,16 @@
             <textarea id="pin-description" rows="3" placeholder="Short note about the trick"></textarea>
           </label>
           <fieldset class="pin-form__video-source">
-            <legend>Video host</legend>
-            <div class="tag-filters pin-form__video-options" id="pin-video-options" role="radiogroup" aria-label="Video host">
-              <button type="button" class="tag-filter is-active" data-video-source="youtube" aria-pressed="true">
-                YouTube
-              </button>
-              <button type="button" class="tag-filter" data-video-source="medal" aria-pressed="false">
-                Medal.tv
-              </button>
-              <button type="button" class="tag-filter" data-video-source="other" aria-pressed="false">
-                Other URL
-              </button>
-            </div>
+            <legend>Video URL</legend>
+            <p class="pin-form__video-help">
+              Paste a link from <strong>YouTube</strong>, <strong>Medal.tv</strong>,
+              <strong>Discord</strong> (cdn.discordapp.com attachments), <strong>Vimeo</strong>,
+              or a direct <strong>.mp4</strong> URL. The type is detected automatically.
+            </p>
           </fieldset>
           <label>
-            Video URL
-            <input type="text" id="pin-video" required placeholder="https://www.youtube.com/watch?v=..." />
+            Link
+            <input type="text" id="pin-video" required placeholder="https://..." />
           </label>
           <label>
             Preview thumbnail (optional)
@@ -225,6 +219,7 @@
       <div class="video-modal__header">
         <h2 id="modal-title"></h2>
         <p id="modal-description"></p>
+        <p id="modal-uploader" class="video-modal__uploader hidden"></p>
         <button class="btn btn--ghost video-modal__edit" id="btn-edit-modal" type="button">Edit trick</button>
       </div>
       <div class="video-modal__player" id="modal-player"></div>

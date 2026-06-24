@@ -12,9 +12,11 @@ import {
 } from "./pin-tags.js";
 import {
   createVideoElement,
-  isDirectVideo,
   isMedalUrl,
-  isYoutubeUrl,
+  isPlayableDirectUrl,
+  getUnsupportedVideoUrlMessage,
+  isSupportedVideoUrl,
+  normalizeVideoUrl,
   youtubeThumbnail,
 } from "./video-utils.js";
 
@@ -37,6 +39,7 @@ const els = {
   modal: document.getElementById("video-modal"),
   modalTitle: document.getElementById("modal-title"),
   modalDescription: document.getElementById("modal-description"),
+  modalUploader: document.getElementById("modal-uploader"),
   modalPlayer: document.getElementById("modal-player"),
   editPanel: document.getElementById("edit-panel"),
   editPanelTitle: document.getElementById("edit-panel-title"),
@@ -72,12 +75,6 @@ let previewHideTimer = null;
 let tagFilters = loadTagFilters();
 
 const PIN_HOVER_RADIUS_PX = 140;
-
-const VIDEO_SOURCE_PLACEHOLDERS = {
-  youtube: "https://www.youtube.com/watch?v=...",
-  medal: "https://medal.tv/clips/... (use Share → Copy link)",
-  other: "Direct .mp4 URL or other embeddable link",
-};
 
 async function init() {
   const auth = await initAuth();
@@ -225,6 +222,13 @@ function canModifyPin(pin) {
   return pin.createdBy === user.steamId;
 }
 
+function getPinUploaderLabel(pin) {
+  if (!pin?.createdBy) {
+    return null;
+  }
+  return pin.createdByName || `Steam user ${pin.createdBy}`;
+}
+
 async function reloadPinsForMap(mapId = currentMapId) {
   const data = await fetchPinsCatalog();
   pinCatalog = data.pins || {};
@@ -284,13 +288,6 @@ function bindUi() {
   document.querySelectorAll("#pin-tag-options [data-tag]").forEach((button) => {
     button.addEventListener("click", () => {
       setPinFormTag(button.dataset.tag);
-    });
-  });
-
-  document.querySelectorAll("#pin-video-options [data-video-source]").forEach((button) => {
-    button.addEventListener("click", () => {
-      setPinFormVideoSource(button.dataset.videoSource);
-      els.pinVideo.setCustomValidity("");
     });
   });
 }
@@ -359,27 +356,6 @@ function getPinFormTag() {
   return active?.dataset.tag || null;
 }
 
-function detectVideoSource(url) {
-  if (!url) return "youtube";
-  if (isMedalUrl(url)) return "medal";
-  if (isYoutubeUrl(url) || isDirectVideo(url)) return isYoutubeUrl(url) ? "youtube" : "other";
-  return "other";
-}
-
-function setPinFormVideoSource(source) {
-  document.querySelectorAll("#pin-video-options [data-video-source]").forEach((button) => {
-    const active = button.dataset.videoSource === source;
-    button.classList.toggle("is-active", active);
-    button.setAttribute("aria-pressed", String(active));
-  });
-  els.pinVideo.placeholder = VIDEO_SOURCE_PLACEHOLDERS[source] || VIDEO_SOURCE_PLACEHOLDERS.other;
-}
-
-function getPinFormVideoSource() {
-  const active = document.querySelector("#pin-video-options [data-video-source].is-active");
-  return active?.dataset.videoSource || "youtube";
-}
-
 function renderPins() {
   els.pinsLayer.innerHTML = "";
   for (const pin of getFilteredPins()) {
@@ -437,12 +413,14 @@ function renderPinList() {
     item.type = "button";
     item.className = "pin-list__item";
     item.dataset.id = pin.id;
+    const uploader = getPinUploaderLabel(pin);
     item.innerHTML = `
       <span class="pin-list__title-row">
         <span class="pin-list__title">${escapeHtml(pin.title)}</span>
         <span class="pin-list__tag pin-list__tag--${pin.tag}">${escapeHtml(tag?.label || pin.tag)}</span>
       </span>
       <span class="pin-list__meta">${escapeHtml(pin.description || "No description")}</span>
+      ${uploader ? `<span class="pin-list__uploader">Added by ${escapeHtml(uploader)}</span>` : ""}
     `;
 
     item.addEventListener("click", () => {
@@ -533,8 +511,8 @@ function focusPin(pin) {
 }
 
 async function getPinPlayback(pin) {
-  let playbackUrl = pin.videoUrl;
-  let thumbnail = pin.thumbnail || youtubeThumbnail(pin.videoUrl);
+  let playbackUrl = normalizeVideoUrl(pin.videoUrl);
+  let thumbnail = pin.thumbnail || youtubeThumbnail(playbackUrl);
 
   if (isMedalUrl(pin.videoUrl)) {
     const medal = await resolveMedalClip(pin.videoUrl);
@@ -568,7 +546,7 @@ async function loadPreviewMedia(pin, previewPinId) {
       img.src = thumbnail;
       img.alt = `${pin.title} preview`;
       els.previewMedia.appendChild(img);
-    } else if (isDirectVideo(playbackUrl)) {
+    } else if (isPlayableDirectUrl(playbackUrl)) {
       const video = createVideoElement(playbackUrl, {
         autoplay: true,
         muted: true,
@@ -621,6 +599,14 @@ function openModal(pin) {
   modalPin = pin;
   els.modalTitle.textContent = pin.title;
   els.modalDescription.textContent = pin.description || "";
+  const uploader = getPinUploaderLabel(pin);
+  if (uploader && els.modalUploader) {
+    els.modalUploader.textContent = `Added by ${uploader}`;
+    els.modalUploader.classList.remove("hidden");
+  } else if (els.modalUploader) {
+    els.modalUploader.textContent = "";
+    els.modalUploader.classList.add("hidden");
+  }
   els.btnEditModal.classList.toggle("hidden", !canModifyPin(pin));
   els.modalPlayer.innerHTML = '<p class="preview-loading">Loading clip…</p>';
   els.modal.showModal();
@@ -692,7 +678,6 @@ function startAddPin() {
   els.btnSavePin.textContent = "Save pin";
   els.btnDeletePin?.classList.add("hidden");
   setPinFormTag(DEFAULT_PIN_TAG);
-  setPinFormVideoSource("youtube");
   els.editPanelTitle.textContent = "New pin";
   els.editPanelHint.textContent =
     "Click anywhere on the map to place a pin, then fill in the details.";
@@ -716,7 +701,6 @@ function startEditPin(pin) {
   els.pinVideo.value = pin.videoUrl || "";
   els.pinThumbnail.value = pin.thumbnail || "";
   setPinFormTag(pin.tag);
-  setPinFormVideoSource(detectVideoSource(pin.videoUrl));
   els.pinCoords.textContent = `Position: ${roundCoord(pin.x)}%, ${roundCoord(pin.y)}%`;
   els.btnSavePin.disabled = false;
   els.btnSavePin.textContent = "Save changes";
@@ -744,7 +728,6 @@ function closeEditPanel() {
   els.btnSavePin.textContent = "Save pin";
   els.btnDeletePin?.classList.add("hidden");
   setPinFormTag(DEFAULT_PIN_TAG);
-  setPinFormVideoSource("youtube");
   updateEditToggleButton();
   highlightPin(null);
 }
@@ -812,15 +795,9 @@ function onSavePin(event) {
   const tag = getPinFormTag();
   if (!tag) return;
 
-  const videoUrl = els.pinVideo.value.trim();
-  const videoSource = getPinFormVideoSource();
-  if (videoSource === "medal" && !isMedalUrl(videoUrl)) {
-    els.pinVideo.setCustomValidity("Paste a Medal.tv share link (medal.tv/clips/...)");
-    els.pinVideo.reportValidity();
-    return;
-  }
-  if (videoSource === "youtube" && videoUrl && !isYoutubeUrl(videoUrl)) {
-    els.pinVideo.setCustomValidity("Enter a YouTube URL");
+  const videoUrl = normalizeVideoUrl(els.pinVideo.value);
+  if (!isSupportedVideoUrl(videoUrl)) {
+    els.pinVideo.setCustomValidity(getUnsupportedVideoUrlMessage());
     els.pinVideo.reportValidity();
     return;
   }
