@@ -385,14 +385,13 @@ function isMgSpotPlacement() {
 }
 
 function isPlacementComplete() {
-  if (!pendingCoords) return false;
-  if (isMgSpotPlacement()) return Boolean(pendingDirection);
-  return true;
+  if (isMgSpotPlacement()) return Boolean(pendingCoords) && Boolean(pendingDirection);
+  return Boolean(pendingCoords);
 }
 
 function getPlacementHint() {
   if (isMgSpotPlacement()) {
-    return "Click once for the arrow base, again for the tip. Right-click cancels the base. A third click starts over.";
+    return "1st click: arrowhead. 2nd click: bar + line. 3rd click: reset. 4th click: restart.";
   }
   return "Move the crosshair over the map and click to place a pin, then fill in the details.";
 }
@@ -406,11 +405,16 @@ function updatePlacementUi() {
 
   if (isMgSpotPlacement()) {
     if (!pendingDirection) {
-      els.pinCoords.textContent = `Base: ${pendingCoords.x}%, ${pendingCoords.y}% — click again for arrow tip`;
+      els.btnSavePin.disabled = true;
+      els.pinCoords.textContent = "No position selected";
+      return;
+    }
+    if (!pendingCoords) {
+      els.pinCoords.textContent = `Arrowhead: ${pendingDirection.x}%, ${pendingDirection.y}% — click again for the bar`;
       els.btnSavePin.disabled = true;
       return;
     }
-    els.pinCoords.textContent = `Base: ${pendingCoords.x}%, ${pendingCoords.y}% · Tip: ${pendingDirection.x}%, ${pendingDirection.y}%`;
+    els.pinCoords.textContent = `Arrowhead: ${pendingDirection.x}%, ${pendingDirection.y}% · Bar: ${pendingCoords.x}%, ${pendingCoords.y}%`;
     els.btnSavePin.disabled = false;
     return;
   }
@@ -420,7 +424,7 @@ function updatePlacementUi() {
 }
 
 function updateDraftMarker(previewTip = null) {
-  if (!pendingCoords || panelMode === null) {
+  if (panelMode === null) {
     els.draftPin?.classList.add("hidden");
     renderDraftMgSpot(els.draftArrow, null, null);
     return;
@@ -428,10 +432,21 @@ function updateDraftMarker(previewTip = null) {
 
   if (isMgSpotPlacement()) {
     els.draftPin?.classList.add("hidden");
-    const tip = pendingDirection || previewTip;
-    renderDraftMgSpot(els.draftArrow, pendingCoords, tip, {
-      preview: Boolean(!pendingDirection && previewTip),
-    });
+    if (pendingCoords && pendingDirection) {
+      renderDraftMgSpot(els.draftArrow, pendingCoords, pendingDirection);
+    } else if (pendingDirection) {
+      renderDraftMgSpot(els.draftArrow, previewTip || pendingCoords, pendingDirection, {
+        preview: Boolean(previewTip && !pendingCoords),
+      });
+    } else {
+      renderDraftMgSpot(els.draftArrow, null, null);
+    }
+    return;
+  }
+
+  if (!pendingCoords) {
+    els.draftPin?.classList.add("hidden");
+    renderDraftMgSpot(els.draftArrow, null, null);
     return;
   }
 
@@ -494,6 +509,16 @@ function renderPins() {
     button.dataset.id = pin.id;
     button.title = pin.title;
     button.setAttribute("aria-label", pin.title);
+
+    const icon = document.createElement("i");
+    icon.className = "fa-solid map-pin__icon";
+    if (pin.tag === "mg-spot") {
+      icon.classList.add("fa-play");
+    } else {
+      icon.classList.add("fa-map-pin");
+    }
+    button.appendChild(icon);
+
     attachPinInteractions(button, pin);
     els.pinsLayer.appendChild(button);
   }
@@ -912,13 +937,13 @@ function onViewportClick(event) {
   };
 
   if (isMgSpotPlacement()) {
-    if (pendingCoords && pendingDirection) {
-      pendingCoords = point;
+    if (pendingDirection && pendingCoords) {
       pendingDirection = null;
-    } else if (pendingCoords) {
-      pendingDirection = point;
-    } else {
+      pendingCoords = null;
+    } else if (pendingDirection) {
       pendingCoords = point;
+    } else {
+      pendingDirection = point;
     }
   } else {
     pendingCoords = point;
@@ -930,32 +955,32 @@ function onViewportClick(event) {
   updateDraftMarker();
 }
 
-function cancelMgSpotBasePlacement() {
-  pendingCoords = null;
+function cancelMgSpotHeadPlacement() {
   pendingDirection = null;
+  pendingCoords = null;
   updatePlacementUi();
   updateDraftMarker();
 }
 
 function onViewportContextMenu(event) {
-  if (!editMode || !isMgSpotPlacement() || !pendingCoords || pendingDirection) {
+  if (!editMode || !isMgSpotPlacement() || !pendingDirection || pendingCoords) {
     return;
   }
 
   event.preventDefault();
-  cancelMgSpotBasePlacement();
+  cancelMgSpotHeadPlacement();
 }
 
 function shouldShowPlacementCrosshair() {
   if (!editMode) return false;
-  if (!pendingCoords) return true;
-  return isMgSpotPlacement() && !pendingDirection;
+  if (isMgSpotPlacement()) return pendingDirection && !pendingCoords;
+  return !pendingCoords;
 }
 
 function onViewportMouseMove(event) {
   if (shouldShowPlacementCrosshair()) {
     showPlacementCrosshairAtScreen(event.clientX, event.clientY);
-    if (isMgSpotPlacement() && pendingCoords && !pendingDirection) {
+    if (isMgSpotPlacement() && pendingDirection && !pendingCoords) {
       const coords = mapViewer.screenToMapPercent(event.clientX, event.clientY);
       if (coords.x >= 0 && coords.y >= 0 && coords.x <= 100 && coords.y <= 100) {
         updateDraftMarker({
@@ -977,7 +1002,7 @@ function onViewportMouseMove(event) {
 function onViewportMouseLeave() {
   if (shouldShowPlacementCrosshair()) {
     hidePlacementCrosshair();
-    if (isMgSpotPlacement() && pendingCoords && !pendingDirection) {
+    if (isMgSpotPlacement() && pendingDirection && !pendingCoords) {
       updateDraftMarker();
     }
     return;

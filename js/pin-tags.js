@@ -1,10 +1,9 @@
 export const PIN_TAGS = [
   { id: "mg-spot", label: "mg spot", className: "map-pin--mg-spot" },
   { id: "climb", label: "climb", className: "map-pin--climb" },
-  { id: "location", label: "location", className: "map-pin--location" },
 ];
 
-export const DEFAULT_PIN_TAG = "climb";
+export const DEFAULT_PIN_TAG = "mg-spot";
 
 export function isValidPinTag(tagId) {
   return PIN_TAGS.some((tag) => tag.id === tagId);

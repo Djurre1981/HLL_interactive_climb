@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
 <body>
   <header class="header">
@@ -72,18 +73,14 @@
 
       <div class="sidebar__section">
         <h2>Tags</h2>
-        <div class="tag-filters" id="tag-filters" role="group" aria-label="Filter by tag">
-          <button type="button" class="tag-filter tag-filter--mg-spot is-active" data-tag="mg-spot" aria-pressed="true">
-            <span class="tag-swatch tag-swatch--mg-spot" aria-hidden="true"></span>
+        <div class="tag-filters tag-filters--two" id="tag-filters" role="group" aria-label="Filter by tag">
+          <button type="button" class="tag-filter tag-filter--mg-spot tag-filter--wide is-active" data-tag="mg-spot" aria-pressed="true">
+            <i class="fa-solid fa-play tag-swatch tag-swatch--mg-spot" aria-hidden="true"></i>
             <span>mg spot</span>
           </button>
           <button type="button" class="tag-filter tag-filter--climb is-active" data-tag="climb" aria-pressed="true">
-            <span class="tag-swatch tag-swatch--climb" aria-hidden="true"></span>
+            <i class="fa-solid fa-map-pin tag-swatch tag-swatch--climb" aria-hidden="true"></i>
             <span>climb</span>
-          </button>
-          <button type="button" class="tag-filter tag-filter--location is-active" data-tag="location" aria-pressed="true">
-            <span class="tag-swatch tag-swatch--location" aria-hidden="true"></span>
-            <span>location</span>
           </button>
         </div>
       </div>
@@ -124,18 +121,14 @@
           </label>
           <fieldset class="pin-form__tags">
             <legend>Tag</legend>
-            <div class="tag-filters pin-form__tag-options" id="pin-tag-options" role="radiogroup" aria-label="Pin tag">
-              <button type="button" class="tag-filter tag-filter--mg-spot" data-tag="mg-spot" aria-pressed="false">
-                <span class="tag-swatch tag-swatch--mg-spot" aria-hidden="true"></span>
+            <div class="tag-filters tag-filters--two pin-form__tag-options" id="pin-tag-options" role="radiogroup" aria-label="Pin tag">
+              <button type="button" class="tag-filter tag-filter--mg-spot tag-filter--wide" data-tag="mg-spot" aria-pressed="false">
+                <i class="fa-solid fa-play tag-swatch tag-swatch--mg-spot" aria-hidden="true"></i>
                 <span>mg spot</span>
               </button>
               <button type="button" class="tag-filter tag-filter--climb is-active" data-tag="climb" aria-pressed="true">
-                <span class="tag-swatch tag-swatch--climb" aria-hidden="true"></span>
+                <i class="fa-solid fa-map-pin tag-swatch tag-swatch--climb" aria-hidden="true"></i>
                 <span>climb</span>
-              </button>
-              <button type="button" class="tag-filter tag-filter--location" data-tag="location" aria-pressed="false">
-                <span class="tag-swatch tag-swatch--location" aria-hidden="true"></span>
-                <span>location</span>
               </button>
             </div>
           </fieldset>
