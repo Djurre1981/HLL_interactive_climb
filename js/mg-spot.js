@@ -57,6 +57,7 @@ export function buildMgSpotSvgContent(baseX, baseY, tipX, tipY, { stem = true } 
   line.setAttribute("y1", String(baseY));
   line.setAttribute("x2", String(sharpX));
   line.setAttribute("y2", String(sharpY));
+  line.style.pointerEvents = "none";
 
   const head = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
   head.setAttribute("class", "mg-spot-head");
