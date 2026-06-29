@@ -80,8 +80,7 @@ let highlightedPinId = null;
 let previewHideTimer = null;
 let tagFilters = loadTagFilters();
 
-const PIN_HOVER_RADIUS_PX = 42;
-const MG_SPOT_HOVER_RADIUS_PX = 42;
+const PIN_HOVER_RADIUS_PX = 140;
 
 async function init() {
   const auth = await initAuth();
@@ -643,15 +642,7 @@ function findClosestPin(clientX, clientY) {
   let minDist = Infinity;
 
   for (const pin of visiblePins) {
-    // For MG spots, check distance to the triangle head (dirX/dirY)
-    // rather than the base (x/y), since the triangle is what users aim at.
-    let checkX = pin.x;
-    let checkY = pin.y;
-    if (pin.tag === "mg-spot" && hasPinDirection(pin)) {
-      checkX = pin.dirX;
-      checkY = pin.dirY;
-    }
-    const point = mapViewer.mapPercentToScreen(checkX, checkY);
+    const point = mapViewer.mapPercentToScreen(pin.x, pin.y);
     const dist = Math.hypot(point.x - mx, point.y - my);
     if (dist < minDist) {
       minDist = dist;
@@ -659,10 +650,7 @@ function findClosestPin(clientX, clientY) {
     }
   }
 
-  // Scale the hover radius by zoom so it feels consistent at all zoom levels.
-  const baseRadius = closest?.tag === "mg-spot" ? MG_SPOT_HOVER_RADIUS_PX : PIN_HOVER_RADIUS_PX;
-  const scaledRadius = baseRadius * mapViewer.scale;
-  return minDist <= scaledRadius ? closest : null;
+  return minDist <= PIN_HOVER_RADIUS_PX ? closest : null;
 }
 
 function updateProximityHighlight(clientX, clientY) {
@@ -1007,24 +995,11 @@ function onViewportMouseMove(event) {
     return;
   }
 
-  if (editMode || mapViewer?.isDragging || event.target.closest(".map-pin")) {
+  if (editMode || mapViewer?.isDragging || event.target.closest(".map-pin, .map-mg-spot")) {
     return;
   }
 
-  const prevHighlighted = highlightedPinId;
   updateProximityHighlight(event.clientX, event.clientY);
-
-  // Proximity detected a new pin — show the preview tooltip too,
-  // so both the stroke highlight and panel open at the same distance.
-  if (highlightedPinId && highlightedPinId !== prevHighlighted) {
-    const pin = getFilteredPins().find((p) => p.id === highlightedPinId);
-    showPreview(pin, event);
-  }
-
-  // Proximity cleared — hide the preview
-  if (!highlightedPinId && prevHighlighted) {
-    scheduleHidePreview();
-  }
 }
 
 function onViewportMouseLeave() {
