@@ -20,6 +20,7 @@ export function buildMgSpotSvgContent(baseX, baseY, tipX, tipY, { stem = true } 
 
   const barGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
   barGroup.setAttribute("class", "mg-spot-base");
+  barGroup.style.pointerEvents = "none";
   const bar = document.createElementNS("http://www.w3.org/2000/svg", "rect");
   bar.setAttribute("x", String(-BASE_WIDTH / 2));
   bar.setAttribute("y", String(-BASE_HEIGHT / 2));
