@@ -40,7 +40,10 @@ const els = {
   previewTooltip: document.getElementById("preview-tooltip"),
   previewMedia: document.getElementById("preview-media"),
   previewTitle: document.getElementById("preview-title"),
-  previewDescription: document.getElementById("preview-description"),
+  previewPositionCode: document.getElementById("preview-position-code"),
+  previewFactionIcon: document.getElementById("preview-faction-icon"),
+  previewFactionText: document.getElementById("preview-faction-text"),
+  previewRequires: document.getElementById("preview-requires"),
   modal: document.getElementById("video-modal"),
   modalTitle: document.getElementById("modal-title"),
   modalDescription: document.getElementById("modal-description"),
@@ -97,6 +100,54 @@ let searchQuery = "";
 
 const PIN_HOVER_RADIUS_PX = 42;
 const MG_SPOT_HOVER_RADIUS_PX = 42;
+
+// Map-based MG spot label direction for allies faction
+// Axis gets the opposite direction, neutral gets right for LR maps and bottom for TB maps
+const MG_LABEL_DIRECTION = {
+  // Allies left
+  Carentan: "left",
+  Hill400: "left",
+  HurtgenV2: "left",
+  Mortain: "left",
+  // Allies right
+  ElAlamein: "right",
+  Omaha: "right",
+  SME: "right",
+  Stalingrad: "right",
+  Smolensk: "right",
+  Tobruk: "right",
+  Utah: "right",
+  // Allies bottom
+  Driel: "bottom",
+  Foy: "bottom",
+  Remagen: "bottom",
+  // Allies top
+  Elsenborn: "top",
+  Juno: "top",
+  Kharkov: "top",
+  Kursk: "top",
+  PHL: "top",
+  SMDMV2: "top",     // saint marie du mont
+};
+
+function getMgLabelDirection(mapId) {
+  return MG_LABEL_DIRECTION[mapId] || "right";
+}
+
+function getOppositeDirection(dir) {
+  switch (dir) {
+    case "left": return "right";
+    case "right": return "left";
+    case "top": return "bottom";
+    case "bottom": return "top";
+    default: return "right";
+  }
+}
+
+function getNeutralDirection(dir) {
+  // Neutral is right for left/right maps, bottom for top/bottom maps
+  return (dir === "top" || dir === "bottom") ? "bottom" : "right";
+}
 
 async function init() {
   const auth = await initAuth();
@@ -786,6 +837,14 @@ function renderPins() {
 
     attachPinInteractions(button, pin);
     els.pinsLayer.appendChild(button);
+
+    // Pin label: independent element on the pins layer (not inside the scaled button)
+    const label = document.createElement("span");
+    label.className = "map-pin__label";
+    label.dataset.id = pin.id;
+    const shortTitle = pin.title.length > 14 ? pin.title.substring(0, 14) + "…" : pin.title;
+    label.textContent = shortTitle;
+    els.pinsLayer.appendChild(label);
   }
 
   if (mgPins.length > 0) {
@@ -812,6 +871,16 @@ function renderPins() {
     }
 
     els.pinsLayer.appendChild(svg);
+
+    // Labels for MG spots
+    for (const pin of mgPins) {
+      const label = document.createElement("span");
+      label.className = "map-pin__label";
+      label.dataset.id = pin.id;
+      const shortTitle = pin.title.length > 14 ? pin.title.substring(0, 14) + "…" : pin.title;
+      label.textContent = shortTitle;
+      els.pinsLayer.appendChild(label);
+    }
   }
 
   updatePinCount();
@@ -832,6 +901,36 @@ function positionPins() {
   els.pinsLayer.querySelectorAll(".map-mg-spot").forEach((group) => {
     group.classList.toggle("is-highlighted", group.dataset.id === highlightedPinId);
   });
+
+  // Position labels alongside their pins (arrowhead for MG spots, icon for climbs)
+  const alliesDir = getMgLabelDirection(currentMapId);
+  const axisDir = getOppositeDirection(alliesDir);
+  const neutralDir = getNeutralDirection(alliesDir);
+  els.pinsLayer.querySelectorAll(".map-pin__label").forEach((label) => {
+    const pin = getFilteredPins().find((item) => item.id === label.dataset.id);
+    if (!pin) return;
+    // For MG spots, position the label at the arrowhead (dirX/dirY), not the tail
+    if (pin.tag === "mg-spot" && pin.dirX != null && pin.dirY != null) {
+      label.style.left = `${pin.dirX}%`;
+      label.style.top = `${pin.dirY}%`;
+      // Map-specific label direction based on faction
+      let labelDir;
+      if (pin.faction === "allies") {
+        labelDir = alliesDir;
+      } else if (pin.faction === "axis") {
+        labelDir = axisDir;
+      } else {
+        labelDir = neutralDir;
+      }
+      // Remove all direction classes
+      label.classList.remove("map-pin__label--left", "map-pin__label--right", "map-pin__label--top", "map-pin__label--bottom");
+      label.classList.add(`map-pin__label--${labelDir}`);
+    } else {
+      label.style.left = `${pin.x}%`;
+      label.style.top = `${pin.y}%`;
+      label.classList.remove("map-pin__label--left", "map-pin__label--right", "map-pin__label--top", "map-pin__label--bottom");
+    }
+  });
 }
 
 function renderPinList() {
@@ -845,13 +944,37 @@ function renderPinList() {
     item.type = "button";
     item.className = "pin-list__item";
     item.dataset.id = pin.id;
-    const uploader = getPinUploaderLabel(pin);
+
+    // Faction for the tag badge color
+    const faction = pin.faction || "neutral";
+
+    // Position code
+    const posX = pin.tag === "mg-spot" && pin.dirX != null ? pin.dirX : pin.x;
+    const posY = pin.tag === "mg-spot" && pin.dirY != null ? pin.dirY : pin.y;
+    const posCode = generatePositionCode(posX, posY);
+
+    // Requires icons
+    let requiresHtml = "";
+    if (pin.requires) {
+      for (const [key, value] of Object.entries(pin.requires)) {
+        if (!value) continue;
+        const config = REQUIRES_ICON_CONFIG[key];
+        if (!config) continue;
+        requiresHtml += `<span class="pin-list__requires-item is-requires--${key}" title="${escapeHtml(config.label)}"><i class="${config.icon}" aria-hidden="true"></i></span>`;
+      }
+    }
+
     item.innerHTML = `
       <span class="pin-list__title-row">
-        <span class="pin-list__title">${escapeHtml(pin.title)}</span>
-        <span class="pin-list__tag pin-list__tag--${pin.tag}">${escapeHtml(tag?.label || pin.tag)}</span>
+        <span class="pin-list__title">
+          <span class="pin-list__title-text">${escapeHtml(pin.title)}</span>
+        </span>
+        <span class="pin-list__tag pin-list__tag--${pin.tag}${pin.tag === "mg-spot" ? ` pin-list__tag--faction-${faction}` : ""}">${escapeHtml(tag?.label || pin.tag)}</span>
       </span>
-      ${uploader ? `<span class="pin-list__uploader">Added by ${escapeHtml(uploader)}</span>` : ""}
+      <span class="pin-list__sub-row">
+        <span class="pin-list__position-code">${posCode}</span>
+        ${requiresHtml ? `<span class="pin-list__requires">${requiresHtml}</span>` : ""}
+      </span>
     `;
 
     item.addEventListener("click", () => {
@@ -975,8 +1098,33 @@ async function getPinPlayback(pin) {
 
 function showPreview(pin, event) {
   clearTimeout(previewHideTimer);
+
+  // Faction icon + label before title (like modal but without the position type tag)
+  const faction = pin.faction || "neutral";
+  const FACTION_CONFIG = {
+    axis: { icon: "fa-solid fa-person-rifle", label: "Axis" },
+    allies: { icon: "fa-solid fa-person-rifle", label: "Allies" },
+    neutral: { icon: "fa-solid fa-skull-crossbones", label: "Neutral" },
+  };
+  const config = FACTION_CONFIG[faction] || FACTION_CONFIG.neutral;
+  if (els.previewFactionIcon) {
+    els.previewFactionIcon.className = `preview-tooltip__faction-icon faction--${faction} ${config.icon}`;
+    if (els.previewFactionText) els.previewFactionText.textContent = config.label;
+    els.previewFactionIcon.classList.remove("hidden");
+  }
   els.previewTitle.textContent = pin.title;
-  els.previewDescription.textContent = pin.description || "";
+
+  // Position code in gold
+  if (els.previewPositionCode) {
+    const posX = pin.tag === "mg-spot" && pin.dirX != null ? pin.dirX : pin.x;
+    const posY = pin.tag === "mg-spot" && pin.dirY != null ? pin.dirY : pin.y;
+    els.previewPositionCode.textContent = generatePositionCode(posX, posY);
+    els.previewPositionCode.classList.remove("hidden");
+  }
+
+  // Requires icons on the bottom right of the title row
+  renderPreviewRequires(pin);
+
   els.previewMedia.innerHTML = '<p class="preview-loading">Loading clip…</p>';
   els.previewTooltip.classList.remove("hidden");
   movePreview(event);
@@ -1114,6 +1262,24 @@ const REQUIRES_ICON_CONFIG = {
   barricade: { icon: "fa-solid fa-road-barrier", label: "Build Barricade" },
   "faction-specific": { icon: "fa-solid fa-triangle-exclamation", label: "Belgian Gate / Tank Hedgehog" },
 };
+
+function renderPreviewRequires(pin) {
+  if (!els.previewRequires) return;
+  els.previewRequires.innerHTML = "";
+  const requires = pin.requires;
+  if (!requires || Object.keys(requires).length === 0) return;
+
+  for (const [key, value] of Object.entries(requires)) {
+    if (!value) continue;
+    const config = REQUIRES_ICON_CONFIG[key];
+    if (!config) continue;
+    const item = document.createElement("span");
+    item.className = `preview-tooltip__requires-item is-requires--${key}`;
+    item.innerHTML = `<i class="${config.icon}" aria-hidden="true"></i>`;
+    item.title = config.label;
+    els.previewRequires.appendChild(item);
+  }
+}
 
 function renderModalRequires(pin) {
   if (!els.modalRequires) return;

@@ -237,8 +237,17 @@
       <div class="preview-tooltip hidden" id="preview-tooltip" role="tooltip">
         <div class="preview-tooltip__media" id="preview-media"></div>
         <div class="preview-tooltip__body">
-          <strong id="preview-title"></strong>
-          <p id="preview-description"></p>
+          <div class="preview-tooltip__title-row">
+            <span class="preview-tooltip__faction-icon hidden" id="preview-faction-icon">
+              <span class="preview-tooltip__faction-text" id="preview-faction-text"></span>
+              <span class="preview-tooltip__title-sep"> - </span>
+            </span>
+            <strong id="preview-title" class="preview-tooltip__title"></strong>
+          </div>
+          <div class="preview-tooltip__sub-row">
+            <span class="preview-tooltip__position-code" id="preview-position-code"></span>
+            <div class="preview-tooltip__requires" id="preview-requires"></div>
+          </div>
         </div>
       </div>
     </section>
