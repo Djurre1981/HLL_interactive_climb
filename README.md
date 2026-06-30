@@ -17,10 +17,10 @@ External links (YouTube, Medal.tv, Vimeo, etc.) still work. A one-time **Discord
 
 ## ToDo / Planned / Ideas
 
-- **Include MG spots** Title is self explainatory
-- **Tags for types of pins** To tag types like climb, mg spot etc
-- **Custom names for mini spots like 'Grandma's house'**
-- ** **
+V **Include MG spots** Title is self explainatory
+V **Tags for types of pins** To tag types like climb, mg spot etc
+V **Custom names for mini spots like 'Grandma's house'**
+- **Limit upload size and/length of video/images**
 
 ## Features
 
