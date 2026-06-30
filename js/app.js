@@ -80,6 +80,9 @@ let pendingCoords = null;
 let pendingDirection = null;
 let highlightedPinId = null;
 let previewHideTimer = null;
+let positionHistory = [];
+let redoHistory = [];
+const MAX_POSITION_HISTORY = 10;
 let tagFilters = loadTagFilters();
 let currentFaction = loadCurrentFaction();
 let searchQuery = "";
@@ -275,7 +278,31 @@ function waitForImage(image) {
   });
 }
 
+function onKeyDown(event) {
+  // Ctrl+W or Ctrl+Z: undo position change during edit mode
+  const isUndo = event.ctrlKey && (event.key === "w" || event.key === "W" || event.code === "KeyW" || event.key === "z" || event.key === "Z" || event.code === "KeyZ");
+  if (isUndo) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (editMode && popPositionSnapshot()) {
+      els.pinCoords.textContent = "Undo: reverted to previous position";
+    }
+    return;
+  }
+  // Ctrl+Y: redo position change during edit mode
+  if (event.ctrlKey && (event.key === "y" || event.key === "Y" || event.code === "KeyY")) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (editMode && popRedoSnapshot()) {
+      els.pinCoords.textContent = "Redo: reapplied position";
+    }
+  }
+}
+
 function bindUi() {
+  // Use window capture so Ctrl+Z/Y works even when focused on input fields
+  window.addEventListener("keydown", onKeyDown, { capture: true });
+
   document.getElementById("btn-zoom-in").addEventListener("click", () => mapViewer.zoomIn());
   document.getElementById("btn-zoom-out").addEventListener("click", () => mapViewer.zoomOut());
   document.getElementById("btn-reset-view").addEventListener("click", () => mapViewer.resetView());
@@ -532,20 +559,8 @@ function updateDraftMarker(previewTip = null) {
   }
 
   if (!pendingCoords) {
-    // Show a live preview pin at the cursor position for climb placements
-    if (previewTip) {
-      renderDraftMgSpot(els.draftArrow, null, null);
-      const tagId = getPinFormTag() || DEFAULT_PIN_TAG;
-      const tag = getPinTag(tagId);
-      els.draftPin.className = `map-pin map-pin--draft ${tag?.className || ""}`;
-      els.draftPin.style.left = `${previewTip.x}%`;
-      els.draftPin.style.top = `${previewTip.y}%`;
-      ensureDraftPinIcon(tagId);
-      els.draftPin.classList.remove("hidden");
-    } else {
-      els.draftPin?.classList.add("hidden");
-      renderDraftMgSpot(els.draftArrow, null, null);
-    }
+    els.draftPin?.classList.add("hidden");
+    renderDraftMgSpot(els.draftArrow, null, null);
     return;
   }
 
@@ -576,8 +591,11 @@ function showPlacementCrosshairAtScreen(x, y) {
 
 function attachPinInteractions(element, pin) {
   element.addEventListener("mouseenter", (event) => {
-    highlightPin(pin.id);
-    showPreview(pin, event);
+    // In edit mode, don't highlight other entries
+    if (!editMode) {
+      highlightPin(pin.id);
+      showPreview(pin, event);
+    }
   });
   element.addEventListener("mousemove", (event) => movePreview(event));
   element.addEventListener("mouseleave", (event) => {
@@ -589,7 +607,8 @@ function attachPinInteractions(element, pin) {
   element.addEventListener("click", (event) => {
     event.stopPropagation();
     if (editMode) {
-      startEditPin(pin);
+      // Clicking on the map to edit — don't zoom in
+      startEditPin(pin, { focus: false });
     } else {
       openModal(pin);
     }
@@ -954,6 +973,7 @@ function setSidebarDefaultVisible(visible) {
 }
 
 function startAddPin() {
+  positionHistory = [];
   panelMode = "add";
   editingPinId = null;
   pendingCoords = null;
@@ -981,9 +1001,10 @@ function startAddPin() {
   renderPins();
 }
 
-function startEditPin(pin) {
+function startEditPin(pin, { focus = true } = {}) {
   if (!pin || !canModifyPin(pin)) return;
 
+  positionHistory = [];
   hidePreviewImmediately();
   closeModal();
   panelMode = "edit";
@@ -1014,7 +1035,9 @@ function startEditPin(pin) {
   updatePlacementUi();
   updateDraftMarker();
   renderPins();
-  focusPin(pin);
+  if (focus) {
+    focusPin(pin);
+  }
 }
 
 function closeEditPanel() {
@@ -1057,6 +1080,56 @@ function updateEditToggleButton() {
   els.btnToggleEdit.classList.toggle("btn--ghost", isOpen);
 }
 
+function pushPositionSnapshot() {
+  // Any new action clears the redo stack
+  redoHistory = [];
+  positionHistory.push({
+    coords: pendingCoords ? { ...pendingCoords } : null,
+    direction: pendingDirection ? { ...pendingDirection } : null,
+  });
+  if (positionHistory.length > MAX_POSITION_HISTORY) {
+    positionHistory.shift();
+  }
+}
+
+function popPositionSnapshot() {
+  if (positionHistory.length === 0) return false;
+  // Push current state onto redo stack before undoing
+  redoHistory.push({
+    coords: pendingCoords ? { ...pendingCoords } : null,
+    direction: pendingDirection ? { ...pendingDirection } : null,
+  });
+  if (redoHistory.length > MAX_POSITION_HISTORY) {
+    redoHistory.shift();
+  }
+  const snap = positionHistory.pop();
+  pendingCoords = snap.coords;
+  pendingDirection = snap.direction;
+  updatePlacementUi();
+  hidePlacementCrosshair();
+  updateDraftMarker();
+  return true;
+}
+
+function popRedoSnapshot() {
+  if (redoHistory.length === 0) return false;
+  // Push current state back onto undo stack
+  positionHistory.push({
+    coords: pendingCoords ? { ...pendingCoords } : null,
+    direction: pendingDirection ? { ...pendingDirection } : null,
+  });
+  if (positionHistory.length > MAX_POSITION_HISTORY) {
+    positionHistory.shift();
+  }
+  const snap = redoHistory.pop();
+  pendingCoords = snap.coords;
+  pendingDirection = snap.direction;
+  updatePlacementUi();
+  hidePlacementCrosshair();
+  updateDraftMarker();
+  return true;
+}
+
 function onViewportClick(event) {
   if (!editMode) return;
   if (event.target.closest(".map-pin:not(.map-pin--draft), .map-mg-spot:not(.map-mg-spot--draft)")) {
@@ -1073,14 +1146,20 @@ function onViewportClick(event) {
 
   if (isMgSpotPlacement()) {
     if (pendingDirection && pendingCoords) {
+      // 3rd click: reset — do NOT push snapshot (would create an extra undo step)
       pendingDirection = null;
       pendingCoords = null;
     } else if (pendingDirection) {
+      // 2nd click: set the bar — save snapshot then advance
+      pushPositionSnapshot();
       pendingCoords = point;
     } else {
+      // 1st click: set arrowhead — save snapshot then advance
+      pushPositionSnapshot();
       pendingDirection = point;
     }
   } else {
+    pushPositionSnapshot();
     pendingCoords = point;
     pendingDirection = null;
   }
@@ -1118,11 +1197,6 @@ function onViewportMouseMove(event) {
     const coords = mapViewer.screenToMapPercent(event.clientX, event.clientY);
     if (coords.x >= 0 && coords.y >= 0 && coords.x <= 100 && coords.y <= 100) {
       if (isMgSpotPlacement() && pendingDirection && !pendingCoords) {
-        updateDraftMarker({
-          x: roundCoord(coords.x),
-          y: roundCoord(coords.y),
-        });
-      } else if (!isMgSpotPlacement() && !pendingCoords) {
         updateDraftMarker({
           x: roundCoord(coords.x),
           y: roundCoord(coords.y),
@@ -1209,17 +1283,15 @@ async function savePin(pinData) {
 
       await updatePin(currentMapId, editingPinId, pinData);
       await reloadPinsForMap(currentMapId);
-      const updated = pins.find((item) => item.id === editingPinId);
-      closeEditPanel();
-      if (updated) focusPin(updated);
+      // Reset for a new pin entry instead of closing editor mode
+      startAddPin();
       return;
     }
 
-    const created = await createPin(currentMapId, pinData);
+    await createPin(currentMapId, pinData);
     await reloadPinsForMap(currentMapId);
-    closeEditPanel();
-    const pin = pins.find((item) => item.id === created.id);
-    if (pin) focusPin(pin);
+    // Reset for a new pin entry instead of closing editor mode
+    startAddPin();
   } catch (error) {
     console.error(error);
     alert(error.message || "Could not save trick");

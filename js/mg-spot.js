@@ -94,17 +94,18 @@ export function renderMgSpotGroup(pin, { draft = false, highlighted = false } = 
 
 export function clearSvgElement(svg) {
   if (!svg) return;
-  while (svg.firstChild) {
-    svg.removeChild(svg.firstChild);
-  }
+  svg.replaceChildren();
 }
 
 export function renderDraftMgSpot(svg, base, tip, { preview = false, headOnly = false } = {}) {
-  clearSvgElement(svg);
+  if (!svg) return;
+
   if (!base && !tip && !headOnly) {
     svg.classList.add("hidden");
     return;
   }
+
+  let newContent;
 
   if (headOnly && tip) {
     const headGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -116,31 +117,32 @@ export function renderDraftMgSpot(svg, base, tip, { preview = false, headOnly = 
     head.setAttribute("cy", String(tip.y));
     head.setAttribute("r", String(HEAD_WIDTH * 0.7));
     headGroup.appendChild(head);
-
-    svg.appendChild(headGroup);
-    svg.classList.remove("hidden");
-    return;
-  }
-
-  if (!base) {
+    newContent = headGroup;
+  } else if (!base) {
     svg.classList.add("hidden");
     return;
-  }
-
-  const parts = buildMgSpotSvgContent(base.x, base.y, tip?.x ?? null, tip?.y ?? null, {
-    stem: Boolean(tip),
-  });
-  if (parts.stem) {
-    parts.stem.setAttribute("stroke-width", String(parts.stemWidth));
-    if (preview) {
-      parts.stem.classList.add("mg-spot-stem--preview");
-      parts.head?.classList.add("mg-spot-head--preview");
+  } else {
+    const parts = buildMgSpotSvgContent(base.x, base.y, tip?.x ?? null, tip?.y ?? null, {
+      stem: Boolean(tip),
+    });
+    if (parts.stem) {
+      parts.stem.setAttribute("stroke-width", String(parts.stemWidth));
+      if (preview) {
+        parts.stem.classList.add("mg-spot-stem--preview");
+        parts.head?.classList.add("mg-spot-head--preview");
+      }
     }
+
+    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    group.setAttribute("class", "map-mg-spot map-mg-spot--draft");
+    group.appendChild(parts.fragment);
+    newContent = group;
   }
 
-  const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-  group.setAttribute("class", "map-mg-spot map-mg-spot--draft");
-  group.appendChild(parts.fragment);
-  svg.appendChild(group);
+  // Prevent repaint during DOM swap by hiding the SVG first
+  svg.style.visibility = "hidden";
+  // Atomically swap content
+  svg.replaceChildren(newContent);
   svg.classList.remove("hidden");
+  svg.style.visibility = "";
 }

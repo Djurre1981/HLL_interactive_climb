@@ -1,8 +1,8 @@
 :root {
-  --bg: #0f1210;
-  --bg-elevated: #171c18;
-  --bg-panel: #1e2520;
-  --border: #2e3a32;
+  --bg: #0f1012;
+  --bg-elevated: #17191c;
+  --bg-panel: #1e2025;
+  --border: #2e333a;
   --text: #e8ebe6;
   --text-muted: #9aa89e;
   --accent: #c4a35a;
@@ -259,6 +259,25 @@ body {
   background: var(--bg-elevated);
   overflow: auto;
   padding: 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .sidebar__section + .sidebar__section {
@@ -1012,18 +1031,21 @@ body {
 }
 
 .map-pin--draft {
-  --pin-scale-selected: 2.4;
-  transform: scale(calc(var(--pin-scale-selected) * 0.9));
+  --pin-scale-selected: 5.8;
+  transform: scale(calc(var(--pin-scale-selected) * 0.375));
   z-index: 12;
   pointer-events: none;
-  animation: draft-pin-pulse 1.4s ease-in-out infinite;
+  animation: none;
+}
+
+/* Draft climb pin — always show with highlight stroke + glow (like is-highlighted) */
+.map-pin--draft .map-pin__icon {
+  -webkit-text-stroke: 1.5px #000;
+  filter: drop-shadow(0 0 28px var(--pin-glow, var(--pin-climb-glow)));
 }
 
 .map-pin--draft::before {
-  box-shadow:
-    0 0 0 4px rgba(15, 18, 16, 0.92),
-    0 0 0 8px rgba(196, 163, 90, 0.35),
-    0 0 28px var(--pin-glow, var(--pin-climb-glow));
+  content: none;
 }
 
 @keyframes draft-pin-pulse {
@@ -1128,6 +1150,12 @@ body {
   pointer-events: none;
 }
 
+/* Draft MG spot — always show the arrowhead with highlight (like is-highlighted) */
+.map-mg-spot--draft .mg-spot-head {
+  stroke-width: 0.20;
+  filter: drop-shadow(0 0 6px rgba(255, 0, 0, 0.5));
+}
+
 .mg-spot-stem {
   stroke: #000;
   stroke-linecap: round;
@@ -1155,8 +1183,25 @@ body {
   opacity: 0.8;
 }
 
-.map-mg-spot.is-highlighted .mg-spot-head,
-.map-mg-spot:hover .mg-spot-head {
+/* Dots (stem) and bar (tail) are 50% transparent by default — including their stroke.
+   Draft spots (being placed in editor) are always fully visible. */
+.map-mg-spot:not(.map-mg-spot--draft) .mg-spot-stem,
+.map-mg-spot:not(.map-mg-spot--draft) .mg-spot-base {
+  opacity: 0.5;
+}
+
+/* Full visibility when highlighted (via proximity system — same area as preview tooltip & arrowhead stroke) */
+.map-mg-spot:not(.map-mg-spot--draft).is-highlighted .mg-spot-stem,
+.map-mg-spot:not(.map-mg-spot--draft).is-highlighted .mg-spot-base {
+  opacity: 1;
+}
+
+/* The arrowhead is always fully visible */
+.map-mg-spot .mg-spot-head {
+  opacity: 1;
+}
+
+.map-mg-spot.is-highlighted .mg-spot-head {
   stroke-width: 0.20;
   filter: drop-shadow(0 0 6px rgba(255, 0, 0, 0.5));
 }
