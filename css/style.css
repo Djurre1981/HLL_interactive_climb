@@ -2007,3 +2007,56 @@ body {
     border-bottom: 1px solid var(--border);
   }
 }
+
+/* ── Pin context menu (right-click) ── */
+.pin-context-menu {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  padding: 4px;
+  opacity: 1;
+  transition: opacity 0.12s ease;
+}
+.pin-context-menu.hidden {
+  display: none;
+  opacity: 0;
+}
+.pin-context-menu__btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+}
+.pin-context-menu__btn:hover {
+  background: var(--bg-panel);
+}
+.pin-context-menu__btn i {
+  width: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.pin-context-menu__btn--danger {
+  color: var(--danger);
+}
+.pin-context-menu__btn--danger i {
+  color: var(--danger);
+}
+.pin-context-menu__btn--danger:hover {
+  background: rgba(196, 90, 90, 0.12);
+}

@@ -234,6 +234,15 @@
         <div class="map-crosshair hidden" id="map-crosshair" aria-hidden="true"></div>
       </div>
 
+      <div class="pin-context-menu hidden" id="pin-context-menu">
+        <button type="button" class="pin-context-menu__btn" data-action="edit" title="Edit this pin">
+          <i class="fa-solid fa-pen-to-square"></i> Edit
+        </button>
+        <button type="button" class="pin-context-menu__btn pin-context-menu__btn--danger" data-action="delete" title="Delete this pin">
+          <i class="fa-solid fa-trash-can"></i> Delete
+        </button>
+      </div>
+
       <div class="preview-tooltip hidden" id="preview-tooltip" role="tooltip">
         <div class="preview-tooltip__media" id="preview-media"></div>
         <div class="preview-tooltip__body">

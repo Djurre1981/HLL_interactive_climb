@@ -73,6 +73,7 @@ const els = {
   requiresFactionCheckbox: document.querySelector(".requires-checkbox--faction"),
   requiresFactionLabel: document.getElementById("requires-faction-label"),
   requiresFactionIcon: document.getElementById("requires-faction-icon"),
+  pinContextMenu: document.getElementById("pin-context-menu"),
 };
 
 let mapViewer;
@@ -89,6 +90,7 @@ let modalPin = null;
 let pendingCoords = null;
 let pendingDirection = null;
 let highlightedPinId = null;
+let contextMenuPin = null;
 let previewHideTimer = null;
 let positionHistory = [];
 let redoHistory = [];
@@ -393,6 +395,13 @@ function bindUi() {
     });
   }
   els.btnDeletePin?.addEventListener("click", onDeletePin);
+  els.pinContextMenu?.addEventListener("click", onPinContextMenuAction);
+  document.addEventListener("click", (event) => {
+    if (els.pinContextMenu && !els.pinContextMenu.contains(event.target)) {
+      hidePinContextMenu();
+    }
+  });
+  document.addEventListener("keydown", onContextMenuKeyDown);
   document.getElementById("btn-close-modal").addEventListener("click", closeModal);
   els.btnEditModal.addEventListener("click", () => {
     if (modalPin) startEditPin(modalPin);
@@ -795,6 +804,13 @@ function attachPinInteractions(element, pin) {
     } else {
       openModal(pin);
     }
+  });
+  element.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    hidePinContextMenu();
+    contextMenuPin = pin;
+    showPinContextMenu(event.clientX, event.clientY);
   });
 }
 
@@ -1764,10 +1780,48 @@ function roundCoord(value) {
 
 function escapeHtml(value) {
   return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+    .replaceAll("&", "&" + "amp;")
+    .replaceAll("<", "&" + "lt;")
+    .replaceAll(">", "&" + "gt;")
+    .replaceAll('"', "&" + "quot;");
+}
+
+/* ── Pin context menu (right-click on map pins) ── */
+function showPinContextMenu(clientX, clientY) {
+  if (!els.pinContextMenu || !contextMenuPin) return;
+  els.pinContextMenu.style.left = clientX + "px";
+  els.pinContextMenu.style.top = clientY + "px";
+  els.pinContextMenu.classList.remove("hidden");
+}
+function hidePinContextMenu() {
+  if (!els.pinContextMenu) return;
+  els.pinContextMenu.classList.add("hidden");
+  contextMenuPin = null;
+}
+function onPinContextMenuAction(event) {
+  var button = event.target.closest("[data-action]");
+  if (!button || !contextMenuPin) return;
+  var action = button.dataset.action;
+  var pin = contextMenuPin;
+  hidePinContextMenu();
+  if (action === "edit") {
+    if (canModifyPin(pin)) startEditPin(pin);
+  } else if (action === "delete") {
+    if (!canModifyPin(pin)) return;
+    if (!window.confirm('Delete "' + pin.title + '"? This cannot be undone.')) return;
+    (async function() {
+      try {
+        await deletePin(currentMapId, pin.id);
+        await reloadPinsForMap(currentMapId);
+      } catch (error) {
+        console.error(error);
+        alert(error.message || "Could not delete trick");
+      }
+    })();
+  }
+}
+function onContextMenuKeyDown(event) {
+  if (event.key === "Escape") hidePinContextMenu();
 }
 
 init();
