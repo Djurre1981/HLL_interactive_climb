@@ -1,5 +1,6 @@
 import { state } from "../state.js";
 import { deletePin as apiDeletePin } from "../api/pins.js";
+import { hideFormContextMenu } from "./form-context-menu.js";
 
 function getPinContextMenu() {
   return document.getElementById("pin-context-menu");
@@ -8,6 +9,7 @@ function getPinContextMenu() {
 export function showPinContextMenu(clientX, clientY) {
   const menu = getPinContextMenu();
   if (!menu || !state.contextMenuPin) return;
+  hideFormContextMenu();
   menu.style.left = clientX + "px";
   menu.style.top = clientY + "px";
   menu.classList.remove("hidden");
@@ -44,5 +46,8 @@ export function onPinContextMenuAction(event, { canModifyFn, reloadPinsForMapFn,
 }
 
 export function onContextMenuKeyDown(event) {
-  if (event.key === "Escape") hidePinContextMenu();
+  if (event.key === "Escape") {
+    hidePinContextMenu();
+    hideFormContextMenu();
+  }
 }

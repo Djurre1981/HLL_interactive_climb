@@ -1,6 +1,8 @@
 const MAX_SCALE = 5;
 const ZOOM_STEP = 1.15;
 
+import { state } from "../state.js";
+
 export class MapViewer {
   constructor(viewport, stage, image) {
     this.viewport = viewport;
@@ -32,6 +34,10 @@ export class MapViewer {
 
   setEditMode(enabled) {
     this.viewport.classList.toggle("is-edit-mode", enabled);
+  }
+
+  setEditorMode(enabled) {
+    this.viewport.classList.toggle("is-editor-mode", enabled);
   }
 
   fitToView() {
@@ -86,7 +92,8 @@ export class MapViewer {
 
   onPointerDown(event) {
     if (event.button !== 0) return;
-    if (event.target.closest(".map-pin, .map-mg-spot")) return;
+    if (state.pinDragSession) return;
+    if (event.target.closest(".map-pin, .map-mg-spot, .map-pin--draft.is-draggable, .map-mg-spot--draft.is-placement-complete, .mg-spot-head, .mg-spot-base")) return;
 
     this.isDragging = true;
     this.viewport.setPointerCapture(event.pointerId);

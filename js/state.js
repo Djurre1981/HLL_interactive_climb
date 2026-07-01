@@ -18,6 +18,9 @@ export const state = {
   previewHideTimer: null,
   positionHistory: [],
   redoHistory: [],
+  pinDragSession: null,
+  pinSaveInFlight: false,
+  mgCollapseHint: false,
   mapViewer: null,
   mapOverlays: null,
 };

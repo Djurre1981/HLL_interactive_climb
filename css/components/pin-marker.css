@@ -13,6 +13,14 @@
   animation: none;
 }
 
+.map-pin--draft.is-draggable {
+  pointer-events: auto;
+}
+
+.map-pin--draft.is-draggable.map-pin--dragging {
+  pointer-events: none;
+}
+
 .map-pin--draft .map-pin__icon {
   -webkit-text-stroke: 1.5px #000;
   filter: drop-shadow(0 0 28px var(--pin-glow, var(--pin-climb-glow)));
@@ -42,27 +50,87 @@
   margin: -28px 0 0 -14px;
   border: none;
   background: none;
-  cursor: pointer;
-  pointer-events: auto;
+  cursor: default;
+  pointer-events: none;
   padding: 0;
   z-index: 5;
   transform: scale(var(--pin-scale-default));
   transform-origin: 50% 100%;
-  transition: transform 0.35s cubic-bezier(0.34, 1.45, 0.64, 1);
 }
 
 .map-pin__icon {
   display: block;
+  position: relative;
   width: 100%;
   height: 100%;
   font-size: 28px;
   line-height: 1;
   text-align: center;
   color: var(--pin-color, var(--pin-climb));
+  cursor: default;
+  pointer-events: auto;
   -webkit-text-stroke: 1px #000;
   filter: drop-shadow(0 0 14px var(--pin-glow, var(--pin-climb-glow)));
-  transition: -webkit-text-stroke 0.35s cubic-bezier(0.34, 1.45, 0.64, 1),
-              filter 0.35s cubic-bezier(0.34, 1.45, 0.64, 1);
+  transition: filter 0.35s cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+.map-viewport:not(.is-edit-mode) .map-pin__icon {
+  cursor: pointer;
+}
+
+/* Match MG spots: only the visible glyph receives pointer events, not the full em box. */
+.map-pin--climb .map-pin__icon {
+  pointer-events: none;
+}
+
+.map-pin--climb .map-pin__icon::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 100%;
+  border-radius: 10px;
+  pointer-events: auto;
+  cursor: default;
+}
+
+.map-viewport:not(.is-edit-mode) .map-pin--climb .map-pin__icon::after {
+  cursor: pointer;
+}
+
+.map-viewport.is-editor-mode .map-pin--climb .map-pin__icon::after {
+  cursor: grab;
+}
+
+.map-viewport.is-editor-mode .map-pin--draft.is-draggable .map-pin__icon::after {
+  cursor: grab;
+  touch-action: none;
+}
+
+.map-viewport.is-editor-mode .map-pin--draft.is-draggable {
+  touch-action: none;
+}
+
+.map-viewport.is-editor-mode.is-pin-dragging,
+.map-viewport.is-editor-mode.is-pin-dragging .map-pin--climb .map-pin__icon::after,
+.map-viewport.is-editor-mode.is-pin-dragging .map-pin--draft.is-draggable .map-pin__icon::after {
+  cursor: grabbing;
+}
+
+.map-pin--dragging {
+  pointer-events: none;
+  z-index: 50;
+}
+
+.map-pin--dragging .map-pin__icon {
+  transition: none;
+}
+
+.map-pin__label--dragging {
+  pointer-events: none;
+  z-index: 50;
 }
 
 .map-pin__label {
@@ -128,8 +196,4 @@
 .map-pin.is-highlighted .map-pin__icon {
   -webkit-text-stroke: 1.5px #000;
   filter: drop-shadow(0 0 28px var(--pin-glow, var(--pin-climb-glow)));
-}
-
-.map-pin.is-highlighted:hover {
-  transform: scale(var(--pin-scale-default));
 }

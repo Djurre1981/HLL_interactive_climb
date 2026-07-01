@@ -59,6 +59,47 @@
   flex-shrink: 0;
 }
 
+.header__editor-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header__add-pin {
+  padding-left: 1.15rem;
+  padding-right: 1.15rem;
+}
+
+.header__add-pin.is-animating {
+  animation: add-pin-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes add-pin-enter {
+  from {
+    opacity: 0;
+    transform: translateX(0.7rem) scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.header__editor-group.is-active #btn-cancel-edit {
+  animation: cancel-edit-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes cancel-edit-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 .header__sep-v {
   display: block;
   width: 1px;

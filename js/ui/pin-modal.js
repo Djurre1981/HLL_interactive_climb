@@ -1,5 +1,4 @@
 import { state } from "../state.js";
-import { canModifyPin } from "../helpers/permissions.js";
 import { getPinPlayback } from "./pin-preview.js";
 import { hidePreviewImmediately } from "./pin-preview.js";
 import { escapeHtml } from "../helpers/sanitizer.js";
@@ -43,10 +42,6 @@ function getModalPositionCode() {
 
 function getModalRequires() {
   return document.getElementById("modal-requires");
-}
-
-function getBtnEditModal() {
-  return document.getElementById("btn-edit-modal");
 }
 
 function getPinUploaderLabel(pin) {
@@ -107,9 +102,6 @@ export function openModal(pin) {
     modalUploader.textContent = "";
     modalUploader.classList.add("hidden");
   }
-
-  const btnEditModal = getBtnEditModal();
-  btnEditModal.classList.toggle("hidden", !canModifyPin(pin));
 
   renderModalRequires(pin);
 

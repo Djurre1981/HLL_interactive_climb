@@ -1,6 +1,7 @@
 import { state, TAG_FILTER_STORAGE_KEY, FACTION_FILTER_STORAGE_KEY } from "../state.js";
-import { PIN_TAGS, normalizePinTag } from "../pin-tags.js";
+import { PIN_TAGS, normalizePinTag, getPinTag } from "../pin-tags.js";
 import { hasPinDirection } from "./mg-spot-arrows.js";
+import { getPinPositionCode } from "../helpers/position-code.js";
 
 export function loadTagFilters() {
   try {
@@ -68,6 +69,22 @@ export function applyEditorFactionToUi() {
   });
 }
 
+function pinMatchesSearch(pin, query) {
+  if (pin.title.toLowerCase().includes(query)) return true;
+
+  const code = getPinPositionCode(pin).toLowerCase();
+  if (code.includes(query)) return true;
+
+  const tag = getPinTag(pin.tag);
+  if (tag?.label?.toLowerCase().includes(query)) return true;
+  if (tag?.id?.toLowerCase().includes(query)) return true;
+  if (pin.tag?.toLowerCase().includes(query)) return true;
+
+  if (pin.description?.toLowerCase().includes(query)) return true;
+
+  return false;
+}
+
 export function getFilteredPins() {
   let visible = state.pins.filter((pin) => isPinTagVisible(pin.tag));
   if (state.currentFaction !== "neutral") {
@@ -77,8 +94,10 @@ export function getFilteredPins() {
     });
   }
   if (state.searchQuery) {
-    const q = state.searchQuery.toLowerCase();
-    visible = visible.filter((pin) => pin.title.toLowerCase().includes(q));
+    const q = state.searchQuery.trim().toLowerCase();
+    if (q) {
+      visible = visible.filter((pin) => pinMatchesSearch(pin, q));
+    }
   }
   return visible.sort((a, b) => {
     const sortY = (pin) => (pin.tag === "mg-spot" && hasPinDirection(pin) ? pin.dirY : pin.y);

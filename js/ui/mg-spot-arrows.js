@@ -15,12 +15,35 @@ export function hasPinDirection(pin) {
   );
 }
 
+// Shared geometry for the stem line + arrowhead triangle, reused by both
+// initial SVG construction and refreshMgSpotGroup() (which redraws the same
+// shapes in place while dragging, without recreating any DOM nodes).
+function computeMgSpotGeometry(baseX, baseY, tipX, tipY) {
+  const dx = tipX - baseX;
+  const dy = tipY - baseY;
+  const length = Math.hypot(dx, dy) || 1;
+  const ux = dx / length;
+  const uy = dy / length;
+  const px = -uy;
+  const py = ux;
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+  return {
+    angle,
+    sharpX: tipX - ux * HEAD_LENGTH,
+    sharpY: tipY - uy * HEAD_LENGTH,
+    leftX: tipX + px * HEAD_WIDTH,
+    leftY: tipY + py * HEAD_WIDTH,
+    rightX: tipX - px * HEAD_WIDTH,
+    rightY: tipY - py * HEAD_WIDTH,
+  };
+}
+
 export function buildMgSpotSvgContent(baseX, baseY, tipX, tipY, { stem = true, headColor = "#ff0000" } = {}) {
   const fragment = document.createDocumentFragment();
 
   const barGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
   barGroup.setAttribute("class", "mg-spot-base");
-  barGroup.style.pointerEvents = "none";
   const bar = document.createElementNS("http://www.w3.org/2000/svg", "rect");
   bar.setAttribute("x", String(-BASE_WIDTH / 2));
   bar.setAttribute("y", String(-BASE_HEIGHT / 2));
@@ -34,23 +57,8 @@ export function buildMgSpotSvgContent(baseX, baseY, tipX, tipY, { stem = true, h
     return { fragment, stemWidth: STEM_WIDTH, base: barGroup };
   }
 
-  const dx = tipX - baseX;
-  const dy = tipY - baseY;
-  const length = Math.hypot(dx, dy) || 1;
-  const ux = dx / length;
-  const uy = dy / length;
-  const px = -uy;
-  const py = ux;
-
-  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+  const { angle, sharpX, sharpY, leftX, leftY, rightX, rightY } = computeMgSpotGeometry(baseX, baseY, tipX, tipY);
   barGroup.setAttribute("transform", `translate(${baseX},${baseY}) rotate(${angle + 90})`);
-
-  const sharpX = tipX - ux * HEAD_LENGTH;
-  const sharpY = tipY - uy * HEAD_LENGTH;
-  const leftX = tipX + px * HEAD_WIDTH;
-  const leftY = tipY + py * HEAD_WIDTH;
-  const rightX = tipX - px * HEAD_WIDTH;
-  const rightY = tipY - py * HEAD_WIDTH;
 
   const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
   line.setAttribute("class", "mg-spot-stem");
@@ -69,6 +77,33 @@ export function buildMgSpotSvgContent(baseX, baseY, tipX, tipY, { stem = true, h
 
   fragment.append(line, head);
   return { fragment, stem: line, base: barGroup, head, stemWidth: STEM_WIDTH };
+}
+
+// Redraws an existing MG spot group's bar/stem/head geometry in place (no DOM
+// node creation/removal), so listeners attached to .mg-spot-head/.mg-spot-base
+// survive redraws during drag. `pin` only needs x/y/dirX/dirY.
+export function refreshMgSpotGroup(group, pin) {
+  if (!group || !pin) return;
+
+  const baseGroup = group.querySelector(".mg-spot-base");
+  const stem = group.querySelector(".mg-spot-stem");
+  const head = group.querySelector(".mg-spot-head");
+
+  const { x: baseX, y: baseY, dirX: tipX, dirY: tipY } = pin;
+  if (tipX == null || tipY == null) return;
+
+  const { angle, sharpX, sharpY, leftX, leftY, rightX, rightY } = computeMgSpotGeometry(baseX, baseY, tipX, tipY);
+
+  baseGroup?.setAttribute("transform", `translate(${baseX},${baseY}) rotate(${angle + 90})`);
+
+  if (stem) {
+    stem.setAttribute("x1", String(baseX));
+    stem.setAttribute("y1", String(baseY));
+    stem.setAttribute("x2", String(sharpX));
+    stem.setAttribute("y2", String(sharpY));
+  }
+
+  head?.setAttribute("points", `${sharpX},${sharpY} ${leftX},${leftY} ${rightX},${rightY}`);
 }
 
 export function renderMgSpotGroup(pin, { draft = false, highlighted = false } = {}) {

@@ -6,10 +6,12 @@ import { hidePreviewImmediately } from "./pin-preview.js";
 import { closeModal } from "./pin-modal.js";
 import { applyEditorFactionToUi } from "./filter-bar.js";
 import { highlightPin, focusPin } from "../helpers/proximity.js";
-import { setPinFormTag, isPlacementComplete, updatePlacementUi } from "../editor/placement-mode.js";
+import { setPinFormTag, isPlacementComplete, updatePlacementUi, syncViewportFormClasses } from "../editor/placement-mode.js";
 import { hidePlacementCrosshair, updateDraftMarker } from "../editor/draft-renderer.js";
 import { updateFactionRequires, setRequiresData, resetRequires } from "../editor/form-handler.js";
 import { renderPins } from "./pin-marker.js";
+import { renderPinList } from "./sidebar.js";
+import { hideFormContextMenu } from "./form-context-menu.js";
 
 function getEditPanel() {
   return document.getElementById("edit-panel");
@@ -17,6 +19,13 @@ function getEditPanel() {
 
 function getSidebarDefault() {
   return document.getElementById("sidebar-default");
+}
+
+function updateSidebarSectionsVisibility() {
+  const inEditor = isInEditorMode();
+  document.getElementById("sidebar-map-section")?.classList.toggle("hidden", inEditor);
+  document.getElementById("sidebar-faction-section")?.classList.toggle("hidden", inEditor);
+  getSidebarDefault()?.classList.toggle("is-editor-mode", inEditor);
 }
 
 function getEditPanelTitle() {
@@ -39,12 +48,20 @@ function getBtnSavePin() {
   return document.getElementById("btn-save-pin");
 }
 
-function getBtnDeletePin() {
-  return document.getElementById("btn-delete-pin");
-}
-
 function getBtnToggleEdit() {
   return document.getElementById("btn-toggle-edit");
+}
+
+function getBtnAddPin() {
+  return document.getElementById("btn-add-pin");
+}
+
+function getBtnCancelEdit() {
+  return document.getElementById("btn-cancel-edit");
+}
+
+function getHeaderEditorGroup() {
+  return document.getElementById("header-editor-group");
 }
 
 function getPinTitle() {
@@ -71,12 +88,16 @@ function getDraftArrow() {
   return document.getElementById("map-draft-arrow");
 }
 
-function getCrosshair() {
-  return document.getElementById("map-crosshair");
-}
-
 function getZoomLabel() {
   return document.getElementById("zoom-label");
+}
+
+function isInEditorMode() {
+  return state.panelMode !== null;
+}
+
+function isFormOpen() {
+  return state.panelMode === "add" || state.panelMode === "edit";
 }
 
 export function updateZoomLabel() {
@@ -85,12 +106,108 @@ export function updateZoomLabel() {
 }
 
 export function toggleEditMode() {
-  if (state.panelMode !== null) {
-    closeEditPanel();
+  if (isInEditorMode()) {
+    exitEditorMode();
     return;
   }
 
-  startAddPin();
+  enterEditorMode();
+}
+
+function syncViewportModeClasses() {
+  state.mapViewer?.setEditorMode(isInEditorMode());
+}
+
+export function enterEditorMode() {
+  state.panelMode = "browse";
+  state.editingPinId = null;
+  state.pendingCoords = null;
+  state.pendingDirection = null;
+  state.mgCollapseHint = false;
+  state.editMode = false;
+  state.positionHistory = [];
+  state.pinDragSession = null;
+
+  hidePreviewImmediately();
+  setSidebarDefaultVisible(true);
+  getEditPanel().classList.add("hidden");
+  hidePlacementCrosshair();
+  highlightPin(null);
+  updateDraftMarker();
+  renderPins();
+  renderPinList();
+  updateSidebarSectionsVisibility();
+  updateEditorHeaderButtons({ animate: true });
+  syncViewportModeClasses();
+  syncViewportFormClasses();
+  hideFormContextMenu();
+}
+
+export function backToEditorBrowse() {
+  if (!isInEditorMode()) return;
+
+  state.panelMode = "browse";
+  state.editingPinId = null;
+  state.pendingCoords = null;
+  state.pendingDirection = null;
+  state.mgCollapseHint = false;
+  state.editMode = false;
+  state.positionHistory = [];
+  state.pinDragSession = null;
+
+  hidePreviewImmediately();
+  setSidebarDefaultVisible(true);
+  state.mapViewer?.setEditMode(false);
+  getEditPanel().classList.add("hidden");
+  hidePlacementCrosshair();
+  getPinForm().reset();
+  getPinCoords().textContent = "No position selected";
+  getBtnSavePin().disabled = true;
+  getBtnSavePin().textContent = "Save pin";
+  setPinFormTag(DEFAULT_PIN_TAG);
+  highlightPin(null);
+  updateDraftMarker();
+  renderPins();
+  renderPinList();
+  updateSidebarSectionsVisibility();
+  updateEditorHeaderButtons();
+  syncViewportModeClasses();
+  syncViewportFormClasses();
+  hideFormContextMenu();
+}
+
+export function exitEditorMode() {
+  state.panelMode = null;
+  state.editingPinId = null;
+  state.pendingCoords = null;
+  state.pendingDirection = null;
+  state.mgCollapseHint = false;
+  state.editMode = false;
+  state.pinDragSession = null;
+
+  setSidebarDefaultVisible(true);
+  state.mapViewer?.setEditMode(false);
+  getEditPanel().classList.add("hidden");
+  hidePlacementCrosshair();
+  getPinForm().reset();
+  getPinCoords().textContent = "No position selected";
+  getBtnSavePin().disabled = true;
+  getBtnSavePin().textContent = "Save pin";
+  setPinFormTag(DEFAULT_PIN_TAG);
+  updateEditorHeaderButtons();
+  highlightPin(null);
+  updateDraftMarker();
+  renderPins();
+  renderPinList();
+  updateSidebarSectionsVisibility();
+  syncViewportModeClasses();
+  syncViewportFormClasses();
+  hideFormContextMenu();
+}
+
+/** @deprecated Use exitEditorMode — kept for map-switch and legacy callers */
+export function closeEditPanel() {
+  exitEditorMode();
 }
 
 export function setSidebarDefaultVisible(visible) {
@@ -98,18 +215,13 @@ export function setSidebarDefaultVisible(visible) {
   sidebarDefault?.classList.toggle("hidden", !visible);
 }
 
-export function startAddPin() {
+function resetAddForm() {
   state.positionHistory = [];
-  state.panelMode = "add";
   state.editingPinId = null;
   state.pendingCoords = null;
   state.pendingDirection = null;
-  state.editMode = true;
+  state.mgCollapseHint = false;
 
-  hidePreviewImmediately();
-  setSidebarDefaultVisible(false);
-  state.mapViewer?.setEditMode(true);
-  getEditPanel().classList.remove("hidden");
   hidePlacementCrosshair();
   const draftPin = getDraftPin();
   draftPin?.classList.add("hidden");
@@ -118,24 +230,49 @@ export function startAddPin() {
   getPinCoords().textContent = "No position selected";
   getBtnSavePin().disabled = true;
   getBtnSavePin().textContent = "Save pin";
-  const btnDeletePin = getBtnDeletePin();
-  btnDeletePin?.classList.add("hidden");
   state.pendingFaction = state.currentFaction;
   setPinFormTag(DEFAULT_PIN_TAG);
   applyEditorFactionToUi();
   updateFactionRequires(state.pendingFaction);
   resetRequires();
-  getEditPanelTitle().textContent = "EDITOR MODE";
   const editPanelHint = getEditPanelHint();
   if (editPanelHint) editPanelHint.textContent = "";
-  updateEditToggleButton();
+}
+
+export function openAddPinForm() {
+  if (!isInEditorMode()) {
+    enterEditorMode();
+  }
+
+  state.panelMode = "add";
+  state.editMode = true;
+
+  hidePreviewImmediately();
+  setSidebarDefaultVisible(false);
+  state.mapViewer?.setEditMode(true);
+  getEditPanel().classList.remove("hidden");
+  resetAddForm();
+  getEditPanelTitle().textContent = "EDIT POSITION";
+  updateEditorHeaderButtons();
   highlightPin(null);
   updateDraftMarker();
   renderPins();
+  syncViewportModeClasses();
+  syncViewportFormClasses();
+  hideFormContextMenu();
 }
 
-export function startEditPin(pin, { focus = true } = {}) {
+/** @deprecated Use openAddPinForm */
+export function startAddPin() {
+  openAddPinForm();
+}
+
+export function startEditPin(pin, { focus = false } = {}) {
   if (!pin || !canModifyPin(pin)) return;
+
+  if (!isInEditorMode()) {
+    enterEditorMode();
+  }
 
   state.positionHistory = [];
   hidePreviewImmediately();
@@ -163,60 +300,44 @@ export function startEditPin(pin, { focus = true } = {}) {
   setRequiresData(pin.requires);
   getBtnSavePin().disabled = !isPlacementComplete();
   getBtnSavePin().textContent = "Save changes";
-  const btnDeletePin = getBtnDeletePin();
-  btnDeletePin?.classList.remove("hidden");
-  getEditPanelTitle().textContent = "EDITOR MODE";
+  getEditPanelTitle().textContent = "EDIT POSITION";
   const editPanelHint = getEditPanelHint();
   if (editPanelHint) editPanelHint.textContent = "";
-  updateEditToggleButton();
+  updateEditorHeaderButtons();
   highlightPin(pin.id);
   hidePlacementCrosshair();
   updatePlacementUi();
   updateDraftMarker();
   renderPins();
   if (focus) {
-    focusPin(pin);
+    focusPin(pin, { zoomPercent: 100 });
   }
+  syncViewportModeClasses();
+  syncViewportFormClasses();
+  hideFormContextMenu();
 }
 
-export function closeEditPanel() {
-  state.panelMode = null;
-  state.editingPinId = null;
-  state.pendingCoords = null;
-  state.pendingDirection = null;
-  state.editMode = false;
-
-  setSidebarDefaultVisible(true);
-  state.mapViewer?.setEditMode(false);
-  getEditPanel().classList.add("hidden");
-  hidePlacementCrosshair();
-  getPinForm().reset();
-  getPinCoords().textContent = "No position selected";
-  getBtnSavePin().disabled = true;
-  getBtnSavePin().textContent = "Save pin";
-  const btnDeletePin = getBtnDeletePin();
-  btnDeletePin?.classList.add("hidden");
-  setPinFormTag(DEFAULT_PIN_TAG);
-  updateEditToggleButton();
-  highlightPin(null);
-  updateDraftMarker();
-  renderPins();
-}
-
-export function updateEditToggleButton() {
-  const isOpen = state.panelMode !== null;
+export function updateEditorHeaderButtons({ animate = false } = {}) {
+  const inEditor = isInEditorMode();
+  const formOpen = isFormOpen();
+  const group = getHeaderEditorGroup();
   const btnToggleEdit = getBtnToggleEdit();
-  if (isOpen) {
-    btnToggleEdit.textContent = "Cancel Edit";
-    btnToggleEdit.style.background = "transparent";
-    btnToggleEdit.style.borderColor = "var(--border)";
-    btnToggleEdit.style.color = "#e8ebe6";
-  } else {
-    btnToggleEdit.textContent = "Editor Mode";
-    btnToggleEdit.style.background = "";
-    btnToggleEdit.style.borderColor = "";
-    btnToggleEdit.style.color = "";
+  const btnAddPin = getBtnAddPin();
+  const btnCancelEdit = getBtnCancelEdit();
+
+  btnToggleEdit?.classList.toggle("hidden", inEditor);
+  btnAddPin?.classList.toggle("hidden", !inEditor || formOpen);
+  btnCancelEdit?.classList.toggle("hidden", !inEditor);
+  group?.classList.toggle("is-active", inEditor);
+
+  if (inEditor && animate && btnAddPin) {
+    btnAddPin.classList.remove("is-animating");
+    void btnAddPin.offsetWidth;
+    btnAddPin.classList.add("is-animating");
+    btnAddPin.addEventListener(
+      "animationend",
+      () => btnAddPin.classList.remove("is-animating"),
+      { once: true }
+    );
   }
-  btnToggleEdit.classList.toggle("btn--primary", !isOpen);
-  btnToggleEdit.classList.toggle("btn--ghost", isOpen);
 }

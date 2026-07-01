@@ -15,8 +15,12 @@
 
 .map-mg-spot {
   pointer-events: visiblePainted;
-  cursor: pointer;
+  cursor: default;
   outline: none;
+}
+
+.map-viewport:not(.is-edit-mode) .map-mg-spot {
+  cursor: pointer;
 }
 
 .map-mg-spot:focus,
@@ -25,6 +29,16 @@
 }
 
 .map-mg-spot--draft {
+  pointer-events: none;
+}
+
+.map-mg-spot--draft.is-placement-complete .mg-spot-head,
+.map-mg-spot--draft.is-placement-complete .mg-spot-base {
+  pointer-events: visiblePainted;
+}
+
+.map-mg-spot--draft.is-placement-complete.map-mg-spot--dragging .mg-spot-head,
+.map-mg-spot--draft.is-placement-complete.map-mg-spot--dragging .mg-spot-base {
   pointer-events: none;
 }
 
@@ -109,4 +123,39 @@
 .map-mg-spot.is-highlighted .mg-spot-head {
   stroke-width: 0.20;
   filter: drop-shadow(0 0 6px rgba(255, 0, 0, 0.5));
+}
+
+/* Editor mode: hover head or tail bar handle → same highlight as .is-highlighted */
+.map-viewport.is-editor-mode:not(.is-editing-pin) .map-mg-spot:not(.map-mg-spot--draft):has(.mg-spot-head:hover) .mg-spot-stem,
+.map-viewport.is-editor-mode:not(.is-editing-pin) .map-mg-spot:not(.map-mg-spot--draft):has(.mg-spot-base:hover) .mg-spot-stem,
+.map-viewport.is-editor-mode:not(.is-editing-pin) .map-mg-spot:not(.map-mg-spot--draft):has(.mg-spot-head:hover) .mg-spot-base,
+.map-viewport.is-editor-mode:not(.is-editing-pin) .map-mg-spot:not(.map-mg-spot--draft):has(.mg-spot-base:hover) .mg-spot-base {
+  opacity: 1;
+}
+
+.map-viewport.is-editor-mode:not(.is-editing-pin) .map-mg-spot:not(.map-mg-spot--draft):has(.mg-spot-head:hover) .mg-spot-head,
+.map-viewport.is-editor-mode:not(.is-editing-pin) .map-mg-spot:not(.map-mg-spot--draft):has(.mg-spot-base:hover) .mg-spot-head,
+.map-viewport.is-editor-mode:not(.is-editing-pin) .map-mg-spot--draft.is-placement-complete:has(.mg-spot-head:hover) .mg-spot-head,
+.map-viewport.is-editor-mode:not(.is-editing-pin) .map-mg-spot--draft.is-placement-complete:has(.mg-spot-base:hover) .mg-spot-head {
+  stroke-width: 0.20;
+  filter: drop-shadow(0 0 6px rgba(255, 0, 0, 0.5));
+}
+
+/* Editor browse + draft placement: head + tail bar are drag handles; the dotted
+   stem in between stays non-interactive and simply follows whichever end moves. */
+.map-viewport.is-editor-mode .mg-spot-head,
+.map-viewport.is-editor-mode .mg-spot-base,
+.map-viewport.is-editor-mode .map-mg-spot--draft.is-placement-complete .mg-spot-head,
+.map-viewport.is-editor-mode .map-mg-spot--draft.is-placement-complete .mg-spot-base {
+  cursor: grab;
+  touch-action: none;
+}
+
+.map-viewport.is-editor-mode.is-pin-dragging .mg-spot-head,
+.map-viewport.is-editor-mode.is-pin-dragging .mg-spot-base,
+.map-viewport.is-editor-mode.is-pin-dragging .map-mg-spot--draft.is-placement-complete .mg-spot-head,
+.map-viewport.is-editor-mode.is-pin-dragging .map-mg-spot--draft.is-placement-complete .mg-spot-base,
+.map-mg-spot--dragging .mg-spot-head,
+.map-mg-spot--dragging .mg-spot-base {
+  cursor: grabbing;
 }

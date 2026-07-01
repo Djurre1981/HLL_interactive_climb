@@ -159,10 +159,6 @@
   text-align: left;
 }
 
-.video-modal__edit {
-  flex-shrink: 0;
-}
-
 .video-modal__player-wrap {
   position: relative;
 }

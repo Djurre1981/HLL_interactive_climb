@@ -71,6 +71,8 @@ function renderPreviewRequires(pin) {
 }
 
 export function showPreview(pin, event) {
+  if (state.panelMode !== null) return;
+
   clearTimeout(state.previewHideTimer);
 
   const faction = pin.faction || "neutral";

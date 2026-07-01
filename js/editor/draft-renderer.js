@@ -1,7 +1,7 @@
 import { state } from "../state.js";
 import { renderDraftMgSpot } from "../ui/mg-spot-arrows.js";
 import { getPinTag, DEFAULT_PIN_TAG } from "../pin-tags.js";
-import { isMgSpotPlacement, getPinFormTag } from "./placement-mode.js";
+import { isMgSpotPlacement, getPinFormTag, isPlacementComplete, syncViewportFormClasses } from "./placement-mode.js";
 
 function getDraftPin() {
   return document.getElementById("map-draft-pin");
@@ -36,16 +36,20 @@ export function ensureDraftPinIcon(tagId) {
 export function updateDraftMarker(previewTip = null) {
   const draftPin = getDraftPin();
   const draftArrow = getDraftArrow();
-  if (state.panelMode === null) {
+  if (state.panelMode !== "add" && state.panelMode !== "edit") {
+    draftPin?.classList.remove("is-draggable");
     draftPin?.classList.add("hidden");
     renderDraftMgSpot(draftArrow, null, null);
+    syncViewportFormClasses();
     return;
   }
 
   if (isMgSpotPlacement()) {
+    draftPin?.classList.remove("is-draggable");
     draftPin?.classList.add("hidden");
     if (state.pendingCoords && state.pendingDirection) {
       renderDraftMgSpot(draftArrow, state.pendingCoords, state.pendingDirection, { faction: state.pendingFaction });
+      draftArrow?.querySelector(".map-mg-spot--draft")?.classList.add("is-placement-complete");
     } else if (state.pendingDirection) {
       renderDraftMgSpot(draftArrow, previewTip || state.pendingCoords, state.pendingDirection, {
         preview: Boolean(previewTip && !state.pendingCoords),
@@ -54,12 +58,15 @@ export function updateDraftMarker(previewTip = null) {
     } else {
       renderDraftMgSpot(draftArrow, null, null);
     }
+    syncViewportFormClasses();
     return;
   }
 
   if (!state.pendingCoords) {
+    draftPin?.classList.remove("is-draggable");
     draftPin?.classList.add("hidden");
     renderDraftMgSpot(draftArrow, null, null);
+    syncViewportFormClasses();
     return;
   }
 
@@ -70,7 +77,9 @@ export function updateDraftMarker(previewTip = null) {
   draftPin.style.left = `${state.pendingCoords.x}%`;
   draftPin.style.top = `${state.pendingCoords.y}%`;
   ensureDraftPinIcon(tagId);
+  draftPin.classList.toggle("is-draggable", isPlacementComplete());
   draftPin.classList.remove("hidden");
+  syncViewportFormClasses();
 }
 
 export function updateDraftPin() {

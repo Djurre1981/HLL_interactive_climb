@@ -2,7 +2,7 @@ import { state } from "../state.js";
 import { createPin, deletePin, updatePin } from "../api/pins.js";
 import { normalizeVideoUrl, isSupportedVideoUrl, getUnsupportedVideoUrlMessage } from "../utils/video.js";
 import { isDirectionalPinTag } from "../pin-tags.js";
-import { isPlacementComplete, getPinFormTag } from "./placement-mode.js";
+import { isPlacementComplete, canSavePlacement, getPinFormTag } from "./placement-mode.js";
 
 const REQUIRES_FACTION_CONFIG = {
   axis: { label: "Belgian Gate", icon: "fa-archway" },
@@ -120,9 +120,13 @@ export function resetRequires() {
   });
 }
 
-export function onSavePin(event, { reloadPinsForMap, startAddPin: startAddPinFn, canModifyFn }) {
+export function triggerFormSave({ reloadPinsForMap, backToEditorBrowse, canModifyFn }) {
+  onSavePin({ preventDefault() {} }, { reloadPinsForMap, backToEditorBrowse, canModifyFn });
+}
+
+export function onSavePin(event, { reloadPinsForMap, backToEditorBrowse: backToEditorBrowseFn, canModifyFn }) {
   event.preventDefault();
-  if (!isPlacementComplete()) return;
+  if (!canSavePlacement()) return;
 
   const tag = getPinFormTag();
   if (!tag) return;
@@ -160,10 +164,10 @@ export function onSavePin(event, { reloadPinsForMap, startAddPin: startAddPinFn,
     pinData.requires = {};
   }
 
-  void savePin(pinData, { reloadPinsForMap, startAddPin: startAddPinFn, canModifyFn });
+  void savePin(pinData, { reloadPinsForMap, backToEditorBrowse: backToEditorBrowseFn, canModifyFn });
 }
 
-export async function savePin(pinData, { reloadPinsForMap, startAddPin: startAddPinFn, canModifyFn }) {
+export async function savePin(pinData, { reloadPinsForMap, backToEditorBrowse: backToEditorBrowseFn, canModifyFn }) {
   const btnSavePin = getBtnSavePin();
   btnSavePin.disabled = true;
 
@@ -174,13 +178,13 @@ export async function savePin(pinData, { reloadPinsForMap, startAddPin: startAdd
 
       await updatePin(state.currentMapId, state.editingPinId, pinData);
       await reloadPinsForMap(state.currentMapId);
-      startAddPinFn();
+      backToEditorBrowseFn();
       return;
     }
 
     await createPin(state.currentMapId, pinData);
     await reloadPinsForMap(state.currentMapId);
-    startAddPinFn();
+    backToEditorBrowseFn();
   } catch (error) {
     console.error(error);
     alert(error.message || "Could not save trick");
@@ -188,7 +192,7 @@ export async function savePin(pinData, { reloadPinsForMap, startAddPin: startAdd
   }
 }
 
-export async function onDeletePin({ reloadPinsForMap, closeEditPanel: closeEditPanelFn, canModifyFn }) {
+export async function onDeletePin({ reloadPinsForMap, backToEditorBrowse: backToEditorBrowseFn, canModifyFn }) {
   if (state.panelMode !== "edit" || !state.editingPinId) return;
 
   const existing = state.pins.find((item) => item.id === state.editingPinId);
@@ -204,7 +208,7 @@ export async function onDeletePin({ reloadPinsForMap, closeEditPanel: closeEditP
   try {
     await deletePin(state.currentMapId, state.editingPinId);
     await reloadPinsForMap(state.currentMapId);
-    closeEditPanelFn();
+    backToEditorBrowseFn();
   } catch (error) {
     console.error(error);
     alert(error.message || "Could not delete trick");

@@ -5,6 +5,14 @@
   line-height: 1.4;
 }
 
+.sidebar__pin-count {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  min-height: 1.05rem;
+}
+
 .sidebar__search {
   width: 100%;
   margin-bottom: 0.75rem;
@@ -25,6 +33,12 @@
 .sidebar__search::placeholder {
   color: var(--text-muted);
   opacity: 0.5;
+}
+
+#sidebar-default.is-editor-mode #sidebar-spots-section {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 
 .sidebar__select-label {
@@ -108,10 +122,34 @@
   transition: border-color 0.15s, transform 0.15s;
 }
 
-.pin-list__edit {
+.pin-list__action {
   flex-shrink: 0;
-  padding: 0.45rem 0.6rem;
-  font-size: 0.75rem;
+  align-self: stretch;
+  width: 3.35rem;
+  min-width: 3.35rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  line-height: 1.1;
+  text-align: center;
+  border-radius: var(--radius);
+}
+
+.pin-list__view {
+  flex-shrink: 0;
+}
+
+.pin-list__edit {
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.pin-list__edit:hover {
+  border-color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
 }
 
 .pin-list__item:hover,
@@ -126,8 +164,12 @@
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
-.pin-list__row.is-active .pin-list__edit {
+.pin-list__row.is-active .pin-list__action {
   border-color: var(--accent);
+}
+
+.pin-list__row.is-active .pin-list__edit {
+  border-color: var(--text-muted);
 }
 
 .pin-list__title-row {

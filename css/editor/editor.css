@@ -49,3 +49,28 @@
   height: 3px;
   margin-top: -1.5px;
 }
+
+.editor-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 4.5rem;
+  transform: translateX(-50%) translateY(8px);
+  z-index: 30;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(15, 18, 16, 0.92);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.editor-toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

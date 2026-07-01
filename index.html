@@ -35,7 +35,11 @@
       </div>
     </div>
     <div class="header__actions">
-      <button id="btn-toggle-edit" class="btn btn--primary hidden" type="button">Editor Mode</button>
+      <div class="header__editor-group" id="header-editor-group">
+        <button id="btn-toggle-edit" class="btn btn--primary hidden" type="button">Editor Mode</button>
+        <button id="btn-add-pin" class="btn btn--primary header__add-pin hidden" type="button">Add Pin</button>
+        <button id="btn-cancel-edit" class="btn btn--ghost hidden" type="button">Cancel Edit</button>
+      </div>
       <span class="header__sep-v"></span>
       <button id="btn-admin-panel" class="btn btn--ghost hidden" type="button">Admin Panel</button>
       <div class="header__user hidden" id="header-user">
@@ -68,7 +72,7 @@
   <main class="layout">
     <aside class="sidebar" id="sidebar">
       <div id="sidebar-default">
-      <div class="sidebar__section">
+      <div class="sidebar__section" id="sidebar-map-section">
         <h2>Map</h2>
         <select id="map-select" class="sidebar__select"></select>
         <div class="sidebar__map-toggles">
@@ -83,7 +87,7 @@
         </div>
       </div>
 
-      <div class="sidebar__section">
+      <div class="sidebar__section" id="sidebar-faction-section">
         <h2>Faction</h2>
         <div class="tag-filters" id="sidebar-faction-bar" role="radiogroup" aria-label="Filter by faction" data-current-faction="neutral">
           <button type="button" class="tag-filter tag-filter--axis is-active" data-faction="axis" aria-pressed="false" title="Axis">
@@ -101,14 +105,20 @@
         </div>
       </div>
 
-      <div class="sidebar__section">
+      <div class="sidebar__section" id="sidebar-spots-section">
         <h2>SPOTS ON THIS MAP</h2>
-        <input type="text" class="sidebar__search" id="pin-search" placeholder="Search spots..." />
+        <p class="sidebar__pin-count" id="pin-count" aria-live="polite"></p>
+        <input type="text" class="sidebar__search" id="pin-search" placeholder="Search by name, code (#A3-12), tag..." />
         <ul class="pin-list" id="pin-list"></ul>
       </div>
       </div>
       <div class="sidebar__section sidebar__section--edit hidden" id="edit-panel">
-        <h2 id="edit-panel-title">EDITOR MODE</h2>
+        <div class="edit-panel__header">
+          <button type="button" id="btn-edit-panel-back" class="edit-panel__back btn btn--icon" aria-label="Back to spot list">
+            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+          </button>
+          <h2 id="edit-panel-title">EDIT POSITION</h2>
+        </div>
         <form id="pin-form" class="pin-form">
           <label>
             Title
@@ -158,7 +168,7 @@
           </fieldset>
           <label>
             Description
-            <textarea id="pin-description" rows="4" placeholder="Short note about the trick"></textarea>
+            <textarea id="pin-description" rows="6" placeholder="Short note about the trick"></textarea>
           </label>
           <label>
             Image Link
@@ -194,8 +204,6 @@
           </label>
           <div class="pin-form__actions">
             <button type="submit" class="btn btn--primary" disabled id="btn-save-pin">Save pin</button>
-            <button type="button" class="btn btn--ghost btn--danger hidden" id="btn-delete-pin">Delete</button>
-            <button type="button" class="btn btn--ghost" id="btn-cancel-pin">Cancel</button>
           </div>
         </form>
       </div>
@@ -255,6 +263,12 @@
         </button>
         <button type="button" class="pin-context-menu__btn pin-context-menu__btn--danger" data-action="delete" title="Delete this pin">
           <i class="fa-solid fa-trash-can"></i> Delete
+        </button>
+      </div>
+
+      <div class="pin-context-menu hidden" id="form-context-menu">
+        <button type="button" class="pin-context-menu__btn" data-action="save" title="Save pin">
+          <i class="fa-solid fa-floppy-disk"></i> Save
         </button>
       </div>
 
@@ -326,7 +340,6 @@
             <span class="video-modal__title-sep" id="modal-title-sep"></span>
             <span id="modal-title"></span>
           </h2>
-          <button class="btn btn--ghost video-modal__edit" id="btn-edit-modal" type="button">Edit trick</button>
         </div>
         <p id="modal-position-code" class="video-modal__position-code"></p>
         <div class="video-modal__requires hidden" id="modal-requires"></div>

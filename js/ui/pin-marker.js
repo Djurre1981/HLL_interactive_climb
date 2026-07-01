@@ -2,12 +2,12 @@ import { state } from "../state.js";
 import { getMapPins } from "./filter-bar.js";
 import { getPinTag } from "../pin-tags.js";
 import { hasPinDirection, renderMgSpotGroup } from "./mg-spot-arrows.js";
-import { positionPins, highlightPin, updateProximityHighlight } from "../helpers/proximity.js";
+import { positionPins, highlightPin } from "../helpers/proximity.js";
 import { updatePinCount } from "./sidebar.js";
 import { showPreview, movePreview, scheduleHidePreview } from "./pin-preview.js";
 import { openModal } from "./pin-modal.js";
-import { startEditPin } from "./pin-editor.js";
 import { showPinContextMenu, hidePinContextMenu } from "./pin-context-menu.js";
+import { attachClimbPinDrag, attachMgSpotDrag } from "../editor/pin-drag.js";
 
 export function getPinStylingClasses(pin) {
   const classes = [];
@@ -34,7 +34,6 @@ export function renderPins() {
     button.type = "button";
     button.className = `map-pin ${tag?.className || ""} ${extraClasses.join(" ")}`;
     button.dataset.id = pin.id;
-    button.title = pin.title;
     button.setAttribute("aria-label", pin.title);
 
     const icon = document.createElement("i");
@@ -46,7 +45,8 @@ export function renderPins() {
     }
     button.appendChild(icon);
 
-    attachPinInteractions(button, pin);
+    attachPinInteractions(icon, pin);
+    attachClimbPinDrag(button, pin);
     pinsLayer.appendChild(button);
 
     const label = document.createElement("span");
@@ -76,6 +76,7 @@ export function renderPins() {
       group.setAttribute("tabindex", "0");
       group.setAttribute("aria-label", pin.title);
       attachPinInteractions(group, pin);
+      attachMgSpotDrag(group, pin);
       svg.appendChild(group);
     }
 
@@ -97,27 +98,30 @@ export function renderPins() {
 
 export function attachPinInteractions(element, pin) {
   element.addEventListener("mouseenter", (event) => {
-    if (!state.editMode) {
-      highlightPin(pin.id);
-      showPreview(pin, event);
-    }
+    if (state.panelMode !== null) return;
+    highlightPin(pin.id);
+    showPreview(pin, event);
   });
-  element.addEventListener("mousemove", (event) => movePreview(event));
-  element.addEventListener("mouseleave", (event) => {
+  element.addEventListener("mousemove", (event) => {
+    if (state.panelMode !== null) return;
+    movePreview(event);
+  });
+  element.addEventListener("mouseleave", () => {
+    if (state.panelMode !== null) return;
     scheduleHidePreview();
-    if (!state.editMode) {
-      updateProximityHighlight(event.clientX, event.clientY);
-    }
+    highlightPin(null);
   });
   element.addEventListener("click", (event) => {
     event.stopPropagation();
-    if (state.editMode) {
-      startEditPin(pin, { focus: false });
-    } else {
-      openModal(pin);
-    }
+    if (state.panelMode !== null) return;
+    openModal(pin);
   });
   element.addEventListener("contextmenu", (event) => {
+    if (state.panelMode === "add" || state.panelMode === "edit") {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     hidePinContextMenu();

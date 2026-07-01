@@ -16,8 +16,8 @@ import {
 import { populateMapSelect } from "./ui/map-picker.js";
 import { renderPins } from "./ui/pin-marker.js";
 import { renderPinList } from "./ui/sidebar.js";
-import { closeEditPanel, updateZoomLabel } from "./ui/pin-editor.js";
-import { highlightPin, positionPins } from "./helpers/proximity.js";
+import { exitEditorMode, updateZoomLabel } from "./ui/pin-editor.js";
+import { highlightPin } from "./helpers/proximity.js";
 import { initUndoRedoKeyboard } from "./editor/undo-redo.js";
 import { applyToggleStateToUi, applyToggleStateToOverlays } from "./ui/toggles.js";
 import { bindUi } from "./bind-ui.js";
@@ -70,7 +70,7 @@ async function switchMap(mapId, { fit = false } = {}) {
   const map = state.mapCatalog.find((item) => item.id === mapId);
   if (!map) return;
 
-  closeEditPanel();
+  exitEditorMode();
 
   state.searchQuery = "";
   const searchEl = document.getElementById("pin-search");
@@ -96,7 +96,6 @@ async function switchMap(mapId, { fit = false } = {}) {
     state.mapViewer = new MapViewer(viewport, stage, image);
     state.mapViewer.onTransform = () => {
       updateZoomLabel();
-      positionPins();
     };
     state.mapOverlays = new MapOverlays(stage, image);
     applyToggleStateToUi();

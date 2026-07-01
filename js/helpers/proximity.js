@@ -3,9 +3,6 @@ import { getFilteredPins } from "../ui/filter-bar.js";
 import { hasPinDirection } from "../ui/mg-spot-arrows.js";
 import { getMgLabelDirection, getOppositeDirection, getNeutralDirection } from "./constants.js";
 
-export const PIN_HOVER_RADIUS_PX = 42;
-export const MG_SPOT_HOVER_RADIUS_PX = 42;
-
 function getViewport() {
   return document.getElementById("map-viewport");
 }
@@ -25,7 +22,7 @@ function getPinList() {
 export function highlightPin(pinId) {
   const changed = state.highlightedPinId !== pinId;
   state.highlightedPinId = pinId;
-  positionPins();
+  syncPinHighlightClasses();
 
   const pinList = getPinList();
   pinList.querySelectorAll(".pin-list__row").forEach((row) => {
@@ -43,45 +40,7 @@ export function highlightPin(pinId) {
   }
 }
 
-export function findClosestPin(clientX, clientY) {
-  const visiblePins = getFilteredPins();
-  const mapViewer = state.mapViewer;
-  if (!mapViewer || visiblePins.length === 0) return null;
-
-  const viewport = getViewport();
-  const rect = viewport.getBoundingClientRect();
-  const mx = clientX - rect.left;
-  const my = clientY - rect.top;
-
-  let closest = null;
-  let minDist = Infinity;
-
-  for (const pin of visiblePins) {
-    let checkX = pin.x;
-    let checkY = pin.y;
-    if (pin.tag === "mg-spot" && hasPinDirection(pin)) {
-      checkX = pin.dirX;
-      checkY = pin.dirY;
-    }
-    const point = mapViewer.mapPercentToScreen(checkX, checkY);
-    const dist = Math.hypot(point.x - mx, point.y - my);
-    if (dist < minDist) {
-      minDist = dist;
-      closest = pin;
-    }
-  }
-
-  const baseRadius = closest?.tag === "mg-spot" ? MG_SPOT_HOVER_RADIUS_PX : PIN_HOVER_RADIUS_PX;
-  const scaledRadius = baseRadius * mapViewer.scale;
-  return minDist <= scaledRadius ? closest : null;
-}
-
-export function updateProximityHighlight(clientX, clientY) {
-  const pin = findClosestPin(clientX, clientY);
-  highlightPin(pin?.id ?? null);
-}
-
-export function focusPin(pin) {
+export function focusPin(pin, { zoomPercent = 65 } = {}) {
   const viewport = getViewport();
   const rect = viewport.getBoundingClientRect();
   const image = getImage();
@@ -96,7 +55,7 @@ export function focusPin(pin) {
     focusY = pin.dirY;
   }
 
-  mapViewer.scale = Math.min(2.2, mapViewer.clampScale(1.0));
+  mapViewer.scale = mapViewer.clampScale(zoomPercent / 100);
   mapViewer.translateX = rect.width / 2 - (focusX / 100) * imgW * mapViewer.scale;
   mapViewer.translateY = rect.height / 2 - (focusY / 100) * imgH * mapViewer.scale;
   mapViewer.clampTranslation();
@@ -104,46 +63,88 @@ export function focusPin(pin) {
   highlightPin(pin.id);
 }
 
-export function positionPins() {
+function syncPinHighlightClasses() {
   const pinsLayer = getPinsLayer();
   const highlightedPinId = state.highlightedPinId;
 
   pinsLayer.querySelectorAll(".map-pin").forEach((button) => {
-    const pin = getFilteredPins().find((item) => item.id === button.dataset.id);
-    if (!pin) return;
-
-    button.style.left = `${pin.x}%`;
-    button.style.top = `${pin.y}%`;
-    button.classList.toggle("is-highlighted", pin.id === highlightedPinId);
+    button.classList.toggle("is-highlighted", button.dataset.id === highlightedPinId);
   });
 
   pinsLayer.querySelectorAll(".map-mg-spot").forEach((group) => {
     group.classList.toggle("is-highlighted", group.dataset.id === highlightedPinId);
   });
+}
 
+const LABEL_DIRECTION_CLASSES = [
+  "map-pin__label--left",
+  "map-pin__label--right",
+  "map-pin__label--top",
+  "map-pin__label--bottom",
+];
+
+function getMgLabelDirectionClass(pin) {
   const alliesDir = getMgLabelDirection(state.currentMapId);
   const axisDir = getOppositeDirection(alliesDir);
   const neutralDir = getNeutralDirection(alliesDir);
-  pinsLayer.querySelectorAll(".map-pin__label").forEach((label) => {
-    const pin = getFilteredPins().find((item) => item.id === label.dataset.id);
-    if (!pin) return;
-    if (pin.tag === "mg-spot" && pin.dirX != null && pin.dirY != null) {
-      label.style.left = `${pin.dirX}%`;
-      label.style.top = `${pin.dirY}%`;
-      let labelDir;
-      if (pin.faction === "allies") {
-        labelDir = alliesDir;
-      } else if (pin.faction === "axis") {
-        labelDir = axisDir;
-      } else {
-        labelDir = neutralDir;
-      }
-      label.classList.remove("map-pin__label--left", "map-pin__label--right", "map-pin__label--top", "map-pin__label--bottom");
-      label.classList.add(`map-pin__label--${labelDir}`);
-    } else {
-      label.style.left = `${pin.x}%`;
-      label.style.top = `${pin.y}%`;
-      label.classList.remove("map-pin__label--left", "map-pin__label--right", "map-pin__label--top", "map-pin__label--bottom");
-    }
-  });
+
+  if (pin.faction === "allies") return alliesDir;
+  if (pin.faction === "axis") return axisDir;
+  return neutralDir;
+}
+
+/**
+ * Position a pin label during drag (px or %) or at rest. Preserves MG faction offset classes.
+ * @param {object} pin
+ * @param {HTMLElement} label
+ * @param {{ x: number, y: number, unit?: "px" | "percent" }} position
+ */
+export function applyLabelPosition(pin, label, position) {
+  if (!label || !position) return;
+
+  const unit = position.unit || "percent";
+  label.style.left = unit === "px" ? `${position.x}px` : `${position.x}%`;
+  label.style.top = unit === "px" ? `${position.y}px` : `${position.y}%`;
+
+  if (pin.tag === "mg-spot" && pin.dirX != null && pin.dirY != null) {
+    label.classList.remove(...LABEL_DIRECTION_CLASSES);
+    label.classList.add(`map-pin__label--${getMgLabelDirectionClass(pin)}`);
+    return;
+  }
+
+  label.classList.remove(...LABEL_DIRECTION_CLASSES);
+}
+
+function applyPinDomPosition(pin, pinsLayer = getPinsLayer()) {
+  const button = pinsLayer.querySelector(`.map-pin[data-id="${pin.id}"]`);
+  if (button) {
+    button.style.left = `${pin.x}%`;
+    button.style.top = `${pin.y}%`;
+  }
+
+  const label = pinsLayer.querySelector(`.map-pin__label[data-id="${pin.id}"]`);
+  if (!label) return;
+
+  if (pin.tag === "mg-spot" && pin.dirX != null && pin.dirY != null) {
+    applyLabelPosition(pin, label, { x: pin.dirX, y: pin.dirY, unit: "percent" });
+  } else {
+    applyLabelPosition(pin, label, { x: pin.x, y: pin.y, unit: "percent" });
+  }
+}
+
+export function updatePinElementPosition(pinId) {
+  const pin = state.pins.find((item) => item.id === pinId);
+  if (!pin) return;
+  applyPinDomPosition(pin);
+  syncPinHighlightClasses();
+}
+
+export function positionPins() {
+  const pinsLayer = getPinsLayer();
+
+  for (const pin of getFilteredPins()) {
+    applyPinDomPosition(pin, pinsLayer);
+  }
+
+  syncPinHighlightClasses();
 }

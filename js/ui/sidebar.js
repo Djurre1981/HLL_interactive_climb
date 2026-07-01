@@ -1,12 +1,15 @@
 import { state } from "../state.js";
-import { canModifyPin } from "../helpers/permissions.js";
 import { getFilteredPins } from "./filter-bar.js";
 import { getPinTag } from "../pin-tags.js";
 import { escapeHtml } from "../helpers/sanitizer.js";
-import { generatePositionCode } from "../helpers/position-code.js";
+import { getPinPositionCode } from "../helpers/position-code.js";
+import { canModifyPin } from "../helpers/permissions.js";
 import { highlightPin, focusPin } from "../helpers/proximity.js";
 import { openModal, REQUIRES_ICON_CONFIG } from "./pin-modal.js";
-import { startEditPin } from "./pin-editor.js";
+
+function isEditorBrowseMode() {
+  return state.panelMode === "browse";
+}
 
 export function renderPinList() {
   const pinList = document.getElementById("pin-list");
@@ -23,9 +26,7 @@ export function renderPinList() {
 
     const faction = pin.faction || "neutral";
 
-    const posX = pin.tag === "mg-spot" && pin.dirX != null ? pin.dirX : pin.x;
-    const posY = pin.tag === "mg-spot" && pin.dirY != null ? pin.dirY : pin.y;
-    const posCode = generatePositionCode(posX, posY);
+    const posCode = getPinPositionCode(pin);
 
     let requiresHtml = "";
     if (pin.requires) {
@@ -52,26 +53,43 @@ export function renderPinList() {
 
     item.addEventListener("click", () => {
       focusPin(pin);
-      openModal(pin);
     });
 
-    row.addEventListener("mouseenter", () => highlightPin(pin.id));
+    row.addEventListener("mouseenter", () => {
+      if (state.panelMode === "edit" && pin.id !== state.editingPinId) return;
+      highlightPin(pin.id);
+    });
     row.addEventListener("mouseleave", () => highlightPin(null));
 
-    const editButton = document.createElement("button");
-    editButton.type = "button";
-    editButton.className = "pin-list__edit btn btn--ghost";
-    editButton.title = "Edit trick";
-    editButton.textContent = "Edit";
-    editButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      startEditPin(pin);
-    });
-
-    row.appendChild(item);
-    if (canModifyPin(pin)) {
+    if (isEditorBrowseMode() && canModifyPin(pin)) {
+      const editButton = document.createElement("button");
+      editButton.type = "button";
+      editButton.className = "pin-list__action pin-list__edit btn btn--ghost";
+      editButton.title = "Edit trick";
+      editButton.textContent = "Edit";
+      editButton.dataset.pinId = pin.id;
+      editButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        document.dispatchEvent(new CustomEvent("pin-list-edit", { detail: { pinId: pin.id } }));
+      });
+      row.appendChild(item);
       row.appendChild(editButton);
+    } else if (!isEditorBrowseMode()) {
+      const viewButton = document.createElement("button");
+      viewButton.type = "button";
+      viewButton.className = "pin-list__action pin-list__view btn btn--ghost";
+      viewButton.title = "View trick";
+      viewButton.textContent = "View";
+      viewButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        openModal(pin);
+      });
+      row.appendChild(item);
+      row.appendChild(viewButton);
+    } else {
+      row.appendChild(item);
     }
+
     pinList.appendChild(row);
   }
 }
@@ -82,7 +100,11 @@ export function updatePinCount() {
   const total = state.pins.length;
   let text;
 
-  if (total === 0) {
+  if (state.searchQuery.trim()) {
+    text = filtered.length === 0
+      ? `No spots match "${state.searchQuery.trim()}"`
+      : `${filtered.length} spot${filtered.length === 1 ? "" : "s"} match your search`;
+  } else if (total === 0) {
     text = `No tricks on ${mapName}`;
   } else if (filtered.length === 0) {
     text = `No tricks visible on ${mapName} — enable a tag`;
@@ -92,6 +114,6 @@ export function updatePinCount() {
     text = `${filtered.length} of ${total} spots on ${mapName}`;
   }
 
-  const pinSearch = document.getElementById("pin-search");
-  pinSearch.placeholder = text;
+  const pinCount = document.getElementById("pin-count");
+  if (pinCount) pinCount.textContent = text;
 }

@@ -3,13 +3,14 @@ import { canModifyPin } from "./helpers/permissions.js";
 import { persistToggles } from "./ui/toggles.js";
 import {
   toggleEditMode,
-  closeEditPanel,
-  startAddPin,
+  exitEditorMode,
+  backToEditorBrowse,
+  openAddPinForm,
   startEditPin,
 } from "./ui/pin-editor.js";
 import {
   onSavePin,
-  onDeletePin,
+  triggerFormSave,
   initRequiresCheckboxes,
   updateFactionRequires,
 } from "./editor/form-handler.js";
@@ -18,6 +19,10 @@ import {
   hidePinContextMenu,
   onContextMenuKeyDown,
 } from "./ui/pin-context-menu.js";
+import {
+  onFormContextMenuAction,
+  hideFormContextMenu,
+} from "./ui/form-context-menu.js";
 import { closeModal, clearModalPlayer } from "./ui/pin-modal.js";
 import {
   setPinFormTag,
@@ -42,6 +47,20 @@ import {
 } from "./ui/filter-bar.js";
 import { highlightPin } from "./helpers/proximity.js";
 import { isDirectionalPinTag } from "./pin-tags.js";
+import { initDraftPinDrag } from "./editor/pin-drag.js";
+
+function suppressNativeContextMenu(elements) {
+  for (const element of elements) {
+    if (!element) continue;
+    element.addEventListener(
+      "contextmenu",
+      (event) => {
+        event.preventDefault();
+      },
+      { capture: true }
+    );
+  }
+}
 
 function onTagFiltersChanged() {
   if (state.highlightedPinId && !getFilteredPins().some((pin) => pin.id === state.highlightedPinId)) {
@@ -52,11 +71,26 @@ function onTagFiltersChanged() {
 }
 
 export function bindUi({ reloadPinsForMap, switchMap }) {
+  suppressNativeContextMenu([
+    document.getElementById("map-viewport"),
+    document.querySelector(".header"),
+    document.getElementById("sidebar"),
+    document.getElementById("pin-context-menu"),
+    document.getElementById("form-context-menu"),
+  ]);
+
   document.getElementById("btn-zoom-in").addEventListener("click", () => state.mapViewer?.zoomIn());
   document.getElementById("btn-zoom-out").addEventListener("click", () => state.mapViewer?.zoomOut());
   document.getElementById("btn-reset-view").addEventListener("click", () => state.mapViewer?.resetView());
   document.getElementById("btn-toggle-edit").addEventListener("click", toggleEditMode);
-  document.getElementById("btn-cancel-pin").addEventListener("click", () => closeEditPanel());
+  document.getElementById("btn-cancel-edit").addEventListener("click", () => exitEditorMode());
+  document.getElementById("btn-add-pin").addEventListener("click", () => openAddPinForm());
+  document.getElementById("btn-edit-panel-back").addEventListener("click", () => backToEditorBrowse());
+
+  document.addEventListener("pin-list-edit", (event) => {
+    const pin = state.pins.find((item) => item.id === event.detail?.pinId);
+    if (pin) startEditPin(pin);
+  });
 
   const userTrigger = document.getElementById("header-user-trigger");
   const userMenu = document.getElementById("header-user-menu");
@@ -75,15 +109,6 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
     });
   }
 
-  const btnDeletePin = document.getElementById("btn-delete-pin");
-  btnDeletePin?.addEventListener("click", () => {
-    onDeletePin({
-      reloadPinsForMap,
-      closeEditPanel,
-      canModifyFn: canModifyPin,
-    });
-  });
-
   const pinContextMenu = document.getElementById("pin-context-menu");
   pinContextMenu?.addEventListener("click", (event) => {
     onPinContextMenuAction(event, {
@@ -92,19 +117,30 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
       startEditPinFn: startEditPin,
     });
   });
+
+  const formContextMenu = document.getElementById("form-context-menu");
+  const formSaveDeps = {
+    reloadPinsForMap,
+    backToEditorBrowse,
+    canModifyFn: canModifyPin,
+  };
+  formContextMenu?.addEventListener("click", (event) => {
+    onFormContextMenuAction(event, {
+      triggerFormSaveFn: () => triggerFormSave(formSaveDeps),
+    });
+  });
+
   document.addEventListener("click", (event) => {
     if (pinContextMenu && !pinContextMenu.contains(event.target)) {
       hidePinContextMenu();
+    }
+    if (formContextMenu && !formContextMenu.contains(event.target)) {
+      hideFormContextMenu();
     }
   });
   document.addEventListener("keydown", onContextMenuKeyDown);
 
   document.getElementById("btn-close-modal").addEventListener("click", closeModal);
-
-  const btnEditModal = document.getElementById("btn-edit-modal");
-  btnEditModal?.addEventListener("click", () => {
-    if (state.modalPin) startEditPin(state.modalPin);
-  });
 
   const modal = document.getElementById("video-modal");
   modal?.addEventListener("close", clearModalPlayer);
@@ -113,7 +149,7 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
   pinForm?.addEventListener("submit", (event) => {
     onSavePin(event, {
       reloadPinsForMap,
-      startAddPin,
+      backToEditorBrowse,
       canModifyFn: canModifyPin,
     });
   });
@@ -170,7 +206,7 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
   document.querySelectorAll("#edit-faction-bar [data-faction]").forEach((button) => {
     button.addEventListener("click", () => {
       const faction = button.dataset.faction;
-      if (faction === state.pendingFaction || state.panelMode === null) return;
+      if (faction === state.pendingFaction || (state.panelMode !== "add" && state.panelMode !== "edit")) return;
       state.pendingFaction = faction;
       applyEditorFactionToUi();
       updateFactionRequires(faction);
@@ -186,7 +222,7 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
       }
       setPinFormTag(nextTag);
       const editPanelHint = document.getElementById("edit-panel-hint");
-      if (state.panelMode !== null && editPanelHint) {
+      if ((state.panelMode === "add" || state.panelMode === "edit") && editPanelHint) {
         editPanelHint.textContent = getPlacementHint();
       }
       updatePlacementUi();
@@ -195,4 +231,5 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
   });
 
   initRequiresCheckboxes();
+  initDraftPinDrag();
 }
